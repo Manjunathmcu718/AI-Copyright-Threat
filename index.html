@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CineShield 2.0</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="rail" aria-label="CineShield navigation">
+        <a class="brand" href="#overview" aria-label="CineShield home">
+          <img src="./assets/cineshield-mark.svg" alt="" />
+          <span>CineShield</span>
+        </a>
+
+        <nav class="nav-stack">
+          <a class="nav-link active" href="#overview">
+            <span class="nav-index">01</span>
+            <span>Command</span>
+          </a>
+          <a class="nav-link" href="#live-scan">
+            <span class="nav-index">02</span>
+            <span>Live Scan</span>
+          </a>
+          <a class="nav-link" href="#dna">
+            <span class="nav-index">03</span>
+            <span>Content DNA</span>
+          </a>
+          <a class="nav-link" href="#discovery">
+            <span class="nav-index">04</span>
+            <span>Discovery</span>
+          </a>
+          <a class="nav-link" href="#graph">
+            <span class="nav-index">05</span>
+            <span>Threat Graph</span>
+          </a>
+          <a class="nav-link" href="#casework">
+            <span class="nav-index">06</span>
+            <span>Evidence</span>
+          </a>
+        </nav>
+
+        <div class="rail-status">
+          <p class="eyebrow">Closed Loop</p>
+          <div class="loop-meter" aria-label="CineShield workflow completion">
+            <span style="--i: 0"></span>
+            <span style="--i: 1"></span>
+            <span style="--i: 2"></span>
+            <span style="--i: 3"></span>
+            <span style="--i: 4"></span>
+            <span style="--i: 5"></span>
+          </div>
+          <p class="small-copy">Discover, verify, map, prioritize, respond, monitor.</p>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Open Track / AI Threat Intelligence</p>
+            <h1>CineShield 2.0</h1>
+          </div>
+          <div class="topbar-actions" aria-label="Global actions">
+            <button class="icon-button" type="button" aria-label="Export architecture" title="Export architecture">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" />
+              </svg>
+            </button>
+            <button class="primary-button" type="button" data-action="run-scan">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 19a8 8 0 1 1 5.66-2.34L21 21m-6-10h-4m2-2v4" />
+              </svg>
+              Find My Content
+            </button>
+          </div>
+        </header>
+
+        <section class="hero-band" id="overview">
+          <div class="mission-copy">
+            <p class="eyebrow">Copyright Immune System</p>
+            <h2>Content DNA for transformed-video detection.</h2>
+            <p>
+              CineShield registers a copyrighted work, builds a multimodal DNA profile,
+              detects transformed copies, reconstructs source clusters, and produces
+              evidence-backed response cases for authorized review.
+            </p>
+            <div class="mission-actions">
+              <button class="primary-button large" type="button" data-action="generate-dna">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 4c5 0 10 16 10 16M17 4C12 4 7 20 7 20M8.5 8h7M8.5 16h7M10 12h4" />
+                </svg>
+                Generate Content DNA
+              </button>
+              <button class="ghost-button large" type="button" data-action="select-highest">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 12h4l3-7 4 14 3-7h2" />
+                </svg>
+                Inspect Top Match
+              </button>
+            </div>
+          </div>
+
+          <div class="signal-board" aria-label="Registered content signal board">
+            <div class="film-window">
+              <div class="film-strip"></div>
+              <div class="frame-grid" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="fingerprint-code">CS-DNA 7F82 A91C 29B8</div>
+            </div>
+            <div class="registered-meta">
+              <div>
+                <span class="label">Protected Work</span>
+                <strong>Project Monsoon</strong>
+              </div>
+              <div>
+                <span class="label">Owner</span>
+                <strong>Sundial Pictures</strong>
+              </div>
+              <div>
+                <span class="label">Duration</span>
+                <strong>08:42 test reel</strong>
+              </div>
+              <div>
+                <span class="label">Authorized Sources</span>
+                <strong>4 verified</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="metric-strip" aria-label="CineShield summary metrics">
+          <article>
+            <span class="metric-label">Candidates</span>
+            <strong id="metric-candidates">143</strong>
+            <small>controlled dataset</small>
+          </article>
+          <article>
+            <span class="metric-label">High Confidence</span>
+            <strong id="metric-high">31</strong>
+            <small>adaptive fusion</small>
+          </article>
+          <article>
+            <span class="metric-label">Source Clusters</span>
+            <strong id="metric-clusters">12</strong>
+            <small>graph connected</small>
+          </article>
+          <article>
+            <span class="metric-label">Review Queue</span>
+            <strong id="metric-review">8</strong>
+            <small>human gated</small>
+          </article>
+        </section>
+
+        <section class="case-timeline" aria-label="End-to-end CineShield scenario">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Project X Scenario</p>
+              <h3>One complete protection loop</h3>
+            </div>
+            <span class="status-pill warning" id="timeline-status">In progress</span>
+          </div>
+          <div class="timeline-steps" id="timeline-steps"></div>
+        </section>
+
+        <section class="panel local-scanner" id="live-scan" aria-label="Local video scanner">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Live Local Scanner</p>
+              <h3>Upload videos, generate DNA, compare candidates</h3>
+            </div>
+            <span class="status-pill" id="local-scan-status">Waiting</span>
+          </div>
+
+          <div class="scanner-layout">
+            <div class="scanner-column">
+              <label class="upload-zone" for="protected-video-input">
+                <span class="upload-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 3v12m0-12 4 4m-4-4-4 4M5 15v4h14v-4" />
+                  </svg>
+                </span>
+                <span class="label">Protected Work</span>
+                <strong id="protected-file-name">Select original video</strong>
+                <small id="protected-file-meta">MP4 or WebM recommended</small>
+              </label>
+              <input class="file-input" id="protected-video-input" type="file" accept="video/*" />
+            </div>
+
+            <div class="scanner-column">
+              <label class="upload-zone" for="candidate-video-input">
+                <span class="upload-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 7h10l2 3h4v8a2 2 0 0 1-2 2H4z" />
+                    <path d="M12 13h4m-2-2v4" />
+                  </svg>
+                </span>
+                <span class="label">Candidate Corpus</span>
+                <strong id="candidate-file-name">Select suspected copies</strong>
+                <small id="candidate-file-meta">Multiple local videos supported</small>
+              </label>
+              <input class="file-input" id="candidate-video-input" type="file" accept="video/*" multiple />
+            </div>
+          </div>
+
+          <div class="registration-grid">
+            <label class="form-field" for="protected-title-input">
+              <span class="label">Internet discovery title</span>
+              <input id="protected-title-input" type="text" autocomplete="off" placeholder="Example: Salaar" />
+            </label>
+            <label class="form-field" for="protected-alias-input">
+              <span class="label">Search aliases</span>
+              <input id="protected-alias-input" type="text" autocomplete="off" placeholder="Example: Salaar Part 1, Ceasefire" />
+            </label>
+          </div>
+
+          <div class="url-candidate-panel">
+            <label class="form-field" for="candidate-url-input">
+              <span class="label">Candidate media URLs</span>
+              <textarea id="candidate-url-input" rows="3" spellcheck="false" placeholder="Only direct public video file URLs you are authorized to process"></textarea>
+            </label>
+            <label class="checkline" for="url-auth-confirm">
+              <input id="url-auth-confirm" type="checkbox" />
+              <span>I confirm these candidate media URLs are permitted for verification.</span>
+            </label>
+            <label class="checkline" for="blind-verify-confirm">
+              <input id="blind-verify-confirm" type="checkbox" />
+              <span>I authorize CineShield to verify direct public media references it discovers during my owned blind test.</span>
+            </label>
+          </div>
+
+          <div class="scanner-actions">
+            <button class="primary-button" type="button" data-action="generate-local-dna">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 4c5 0 10 16 10 16M17 4C12 4 7 20 7 20M8.5 8h7M8.5 16h7M10 12h4" />
+              </svg>
+              Generate Local DNA
+            </button>
+            <button class="ghost-button" type="button" data-action="run-local-scan">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12h4l3-7 4 14 3-7h2" />
+              </svg>
+              Run Local Scan
+            </button>
+            <button class="ghost-button" type="button" data-action="run-url-candidate-scan">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.14 1.14" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.14-1.14" />
+              </svg>
+              Verify URL Candidates
+            </button>
+            <button class="ghost-button" type="button" data-action="search-internet-for-work">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 12h18" />
+                <path d="M12 3a15 15 0 0 1 0 18" />
+                <path d="M12 3a15 15 0 0 0 0 18" />
+                <path d="M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0" />
+              </svg>
+              Search Internet For This Work
+            </button>
+          </div>
+
+          <div class="scanner-output">
+            <article class="local-dna-card">
+              <p class="eyebrow">Measured DNA</p>
+              <h4 id="local-dna-title">No local DNA yet</h4>
+              <div class="local-dna-summary" id="local-dna-summary">
+                <div class="empty-state">Waiting for a protected video.</div>
+              </div>
+            </article>
+
+            <article class="source-boundary-card">
+              <p class="eyebrow">Source Connector Boundary</p>
+              <h4>Real sources, legal access</h4>
+              <ul class="connector-list">
+                <li><strong>Live now</strong><span>Uploaded corpus, authorized URLs, discovered direct media</span></li>
+                <li><strong>Production</strong><span>Rights-holder queues, search APIs, partner feeds</span></li>
+                <li><strong>Blocked</strong><span>Hidden-site scraping, login bypass, unauthorized downloads</span></li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="local-results-grid">
+            <article class="local-results-panel">
+              <div class="panel-heading tight">
+                <div>
+                  <p class="eyebrow">Local Results</p>
+                  <h3>Computed suspected matches</h3>
+                </div>
+              </div>
+              <div class="local-results-list" id="local-results-list">
+                <div class="empty-state">Run a local scan to rank candidates.</div>
+              </div>
+            </article>
+
+            <article class="local-results-panel">
+              <div class="panel-heading tight">
+                <div>
+                  <p class="eyebrow">Measured Case</p>
+                  <h3 id="local-case-title">No candidate selected</h3>
+                </div>
+                <span class="status-pill" id="local-case-decision">Idle</span>
+              </div>
+              <div class="local-case-detail" id="local-case-detail">
+                <div class="empty-state">The highest scoring candidate appears here after scanning.</div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="content-grid" id="dna">
+          <div class="panel wide">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Content DNA</p>
+                <h3>Multimodal fingerprint profile</h3>
+              </div>
+              <span class="status-pill ready" id="dna-status">Ready</span>
+            </div>
+
+            <div class="dna-layout">
+              <div class="dna-helix" aria-hidden="true">
+                <div class="helix-line left"></div>
+                <div class="helix-line right"></div>
+                <span style="--y: 6%; --w: 46%"></span>
+                <span style="--y: 19%; --w: 64%"></span>
+                <span style="--y: 32%; --w: 50%"></span>
+                <span style="--y: 45%; --w: 70%"></span>
+                <span style="--y: 58%; --w: 54%"></span>
+                <span style="--y: 71%; --w: 62%"></span>
+                <span style="--y: 84%; --w: 48%"></span>
+              </div>
+
+              <div class="dna-signals" id="dna-signals"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Adaptive Fusion</p>
+                <h3>Evidence weighting</h3>
+              </div>
+            </div>
+            <div class="fusion-stack" id="fusion-stack"></div>
+          </div>
+        </section>
+
+        <section class="content-grid lab-grid" aria-label="Transformation robustness lab">
+          <div class="panel wide">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Transformation Lab</p>
+                <h3>Adaptive fusion under evasion transformations</h3>
+              </div>
+              <span class="status-pill ready" id="lab-profile">Balanced evidence</span>
+            </div>
+            <div class="transform-toggles" id="lab-toggles"></div>
+            <div class="lab-scoreboard">
+              <article>
+                <span class="metric-label">Baseline</span>
+                <strong id="lab-baseline">98%</strong>
+                <small>fixed visual-first matching</small>
+              </article>
+              <article>
+                <span class="metric-label">CineShield</span>
+                <strong id="lab-cineshield">98%</strong>
+                <small>adaptive multimodal fusion</small>
+              </article>
+              <article>
+                <span class="metric-label">Decision</span>
+                <strong id="lab-decision">Match</strong>
+                <small>human-gated response</small>
+              </article>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Evidence Trust</p>
+                <h3>Live signal profile</h3>
+              </div>
+            </div>
+            <div class="fusion-stack" id="lab-trust"></div>
+          </div>
+        </section>
+
+        <section class="panel web-discovery-panel" id="discovery" aria-label="Live web discovery connector">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Live Web Discovery</p>
+              <h3>Public source connector</h3>
+            </div>
+            <span class="status-pill" id="web-discovery-status">Waiting</span>
+          </div>
+
+          <div class="web-discovery-grid">
+            <div class="discovery-form-card">
+              <label class="form-field" for="web-title-input">
+                <span class="label">Protected title</span>
+                <input id="web-title-input" type="text" value="Project Monsoon" autocomplete="off" />
+              </label>
+              <label class="form-field" for="web-alias-input">
+                <span class="label">Aliases</span>
+                <input id="web-alias-input" type="text" value="Monsoon, Project X" autocomplete="off" />
+              </label>
+              <label class="form-field" for="authorized-domain-input">
+                <span class="label">Authorized domains</span>
+                <textarea id="authorized-domain-input" rows="4" spellcheck="false">netflix.com
+primevideo.com
+hotstar.com
+jiocinema.com
+sonyliv.com
+zee5.com
+youtube.com</textarea>
+              </label>
+              <label class="form-field" for="source-domain-input">
+                <span class="label">Source focus domains</span>
+                <textarea id="source-domain-input" rows="3" spellcheck="false" placeholder="Optional: public source domains to focus the search index"></textarea>
+              </label>
+              <div class="discovery-options-grid">
+                <label class="form-field" for="discovery-provider-input">
+                  <span class="label">Search providers</span>
+                  <input id="discovery-provider-input" type="text" value="brave, bing, google, commoncrawl" autocomplete="off" />
+                </label>
+                <label class="form-field" for="expand-depth-input">
+                  <span class="label">Expansion depth</span>
+                  <input id="expand-depth-input" type="number" min="0" max="2" value="1" />
+                </label>
+                <label class="form-field" for="expand-pages-input">
+                  <span class="label">Expansion pages</span>
+                  <input id="expand-pages-input" type="number" min="0" max="32" value="16" />
+                </label>
+                <label class="form-field" for="per-domain-pages-input">
+                  <span class="label">Per domain</span>
+                  <input id="per-domain-pages-input" type="number" min="1" max="10" value="4" />
+                </label>
+              </div>
+              <label class="form-field" for="web-seed-input">
+                <span class="label">Seed URLs</span>
+                <textarea id="web-seed-input" rows="5" spellcheck="false" placeholder="https://public-source.example/page"></textarea>
+              </label>
+              <label class="form-field" for="partner-source-input">
+                <span class="label">Partner/source feed</span>
+                <textarea id="partner-source-input" rows="4" spellcheck="false" placeholder='Public URLs from rights-holder feeds, partner reports, or JSON [{"url":"https://source.example/page"}]'></textarea>
+              </label>
+              <div class="scanner-actions">
+                <button class="primary-button" type="button" data-action="run-web-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M11 19a8 8 0 1 1 5.66-2.34L21 21" />
+                    <path d="M8 11h6" />
+                  </svg>
+                  Search Web Index
+                </button>
+                <button class="primary-button" type="button" data-action="run-web-discovery">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M11 19a8 8 0 1 1 5.66-2.34L21 21m-6-10h-4m2-2v4" />
+                  </svg>
+                  Scan Public Sources
+                </button>
+                <button class="ghost-button" type="button" data-action="toggle-web-monitor" id="web-monitor-button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 6v6l4 2" />
+                    <path d="M21 12a9 9 0 1 1-3-6.7" />
+                    <path d="M21 3v6h-6" />
+                  </svg>
+                  <span>Start Monitor</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="web-results-card">
+              <div class="web-discovery-summary" id="web-discovery-summary">
+                <div class="empty-state">Waiting for seed URLs.</div>
+              </div>
+              <div class="web-lead-list" id="web-lead-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="content-grid discovery-grid" aria-label="Candidate discovery">
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Discovery Engine</p>
+                <h3>Candidate search</h3>
+              </div>
+              <span class="status-pill" id="scan-status">Idle</span>
+            </div>
+            <div class="scan-core">
+              <div class="scan-ring" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div>
+                <strong id="scan-headline">Controlled test corpus loaded</strong>
+                <p id="scan-copy">Variants include compression, crop, watermark, audio noise, subtitle edits, and partial clips.</p>
+              </div>
+            </div>
+            <div class="progress-track" aria-label="Scan progress">
+              <span id="scan-progress"></span>
+            </div>
+          </div>
+
+          <div class="panel wide">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Candidates</p>
+                <h3>Ranked suspected matches</h3>
+              </div>
+              <div class="segmented" role="tablist" aria-label="Candidate filter">
+                <button class="active" type="button" data-filter="all">All</button>
+                <button type="button" data-filter="high">High</button>
+                <button type="button" data-filter="review">Review</button>
+              </div>
+            </div>
+            <div class="candidate-list" id="candidate-list"></div>
+          </div>
+        </section>
+
+        <section class="content-grid graph-grid" id="graph">
+          <div class="panel graph-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Threat Graph</p>
+                <h3>Distribution cluster map</h3>
+              </div>
+              <div class="graph-legend" aria-label="Graph edge legend">
+                <span><i class="legend-solid"></i> content DNA</span>
+                <span><i class="legend-dashed"></i> pattern</span>
+              </div>
+            </div>
+            <svg class="threat-graph" viewBox="0 0 760 470" role="img" aria-labelledby="graph-title">
+              <title id="graph-title">CineShield threat graph showing related source clusters</title>
+              <g id="graph-edges"></g>
+              <g id="graph-nodes"></g>
+            </svg>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Selected Node</p>
+                <h3 id="node-title">Cluster A</h3>
+              </div>
+              <span class="status-pill warning" id="node-risk">High</span>
+            </div>
+            <div class="node-detail" id="node-detail"></div>
+          </div>
+        </section>
+
+        <section class="content-grid" id="casework">
+          <div class="panel wide">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">AI Investigator</p>
+                <h3>Structured investigation summary</h3>
+              </div>
+              <span class="status-pill ready">Evidence only</span>
+            </div>
+            <div class="investigator" id="investigator"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Evidence Case</p>
+                <h3 id="case-title">CASE CS-10482</h3>
+              </div>
+              <span class="status-pill warning" id="case-status">Human review</span>
+            </div>
+            <div class="case-card" id="case-card"></div>
+            <div class="case-actions">
+              <button class="primary-button" type="button" data-action="generate-case">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 3v5h5M8 13h8M8 17h5" />
+                </svg>
+                Generate Package
+              </button>
+              <button class="ghost-button" type="button" data-action="approve-case">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m5 13 4 4L19 7" />
+                </svg>
+                Authorize
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel benchmark-panel" aria-label="Robustness benchmark">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Robustness Benchmark</p>
+              <h3>Baseline versus adaptive Content DNA</h3>
+            </div>
+            <span class="status-pill ready">Synthetic set v0.1</span>
+          </div>
+          <p class="benchmark-meta" id="benchmark-meta">Generated benchmark data will appear here.</p>
+          <div class="coverage-strip" id="benchmark-coverage"></div>
+          <div class="benchmark-table" id="benchmark-table"></div>
+        </section>
+
+        <section class="content-grid real-media-grid" aria-label="Real media benchmark">
+          <div class="panel wide">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Real Media Smoke Test</p>
+                <h3>Generated videos, extracted fingerprints, measured matches</h3>
+              </div>
+              <span class="status-pill ready" id="real-media-status">Pipeline ready</span>
+            </div>
+            <p class="benchmark-meta" id="real-media-meta">Real media benchmark data will appear here.</p>
+            <div class="real-media-metrics" id="real-media-metrics"></div>
+            <div class="coverage-strip" id="real-media-coverage"></div>
+            <div class="benchmark-table compact" id="real-media-table"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Measured Case</p>
+                <h3 id="real-case-title">Transformation case</h3>
+              </div>
+            </div>
+            <div class="real-case" id="real-case"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./data/benchmark-results.js"></script>
+    <script src="./data/real-media-results.js"></script>
+    <script src="./app.js?v=20260905-blind-discovery"></script>
+  </body>
+</html>

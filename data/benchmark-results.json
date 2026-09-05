@@ -1,0 +1,177 @@
+{
+  "generatedAt": "2026-08-25T05:39:01.157606+00:00",
+  "seed": 7429,
+  "threshold": 0.78,
+  "reviewFloor": 0.72,
+  "sampleCount": 540,
+  "totalGeneratedExamples": 900,
+  "split": {
+    "type": "content-level",
+    "calibrationWorks": 4,
+    "testWorks": 6,
+    "calibrationExamples": 360,
+    "testExamples": 540,
+    "positiveVariantsPerTransformationPerWork": 5,
+    "negativeVariantsPerTransformationPerWork": 5,
+    "evaluatedOn": "held-out test works only"
+  },
+  "systems": {
+    "baseline": "fixed visual-heavy evidence weights",
+    "adaptive": "transformation-aware evidence reliability and normalized fusion weights"
+  },
+  "negativeDesign": "hard negatives share selected surface-level signals such as metadata, text, visual, audio, or scene similarity",
+  "decisionPolicy": {
+    "match": "adaptive score >= 0.78",
+    "review": "0.72 <= adaptive score < 0.78",
+    "negative": "adaptive score < 0.72"
+  },
+  "rows": [
+    {
+      "key": "clean",
+      "transformation": "Clean copy",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "note": "Original-quality near duplicate",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "compression",
+      "transformation": "Compression",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "note": "Scene and audio evidence stay stable",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "resolution",
+      "transformation": "Resolution change",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "note": "Visual embeddings normalize downscale",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "crop",
+      "transformation": "Cropping",
+      "baseline": 91,
+      "cineshield": 100,
+      "gain": 9,
+      "degradation": 0,
+      "note": "Visual discounted, audio and scene evidence raised",
+      "baselinePrecision": 100,
+      "baselineRecall": 83,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "watermark",
+      "transformation": "Watermark",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "note": "Overlay weakens visual-only matching",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "audio_mod",
+      "transformation": "Audio modification",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "note": "Visual, scene, and temporal evidence compensate",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "subtitle",
+      "transformation": "Subtitle edit",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "note": "Text signal is bounded when subtitles diverge",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "partial",
+      "transformation": "Partial clip",
+      "baseline": 18,
+      "cineshield": 78,
+      "gain": 59,
+      "degradation": 22,
+      "note": "Confidence stays review-gated under short coverage",
+      "baselinePrecision": 100,
+      "baselineRecall": 10,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 63
+    },
+    {
+      "key": "combined",
+      "transformation": "Combined transformations",
+      "baseline": 0,
+      "cineshield": 93,
+      "gain": 93,
+      "degradation": 7,
+      "note": "Adaptive fusion reduces multi-transform degradation",
+      "baselinePrecision": 0,
+      "baselineRecall": 0,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 87
+    }
+  ],
+  "overall": {
+    "baseline": {
+      "precision": 100,
+      "recall": 77,
+      "f1": 87,
+      "tp": 208,
+      "fp": 0,
+      "tn": 270,
+      "fn": 62
+    },
+    "adaptive": {
+      "precision": 100,
+      "recall": 94,
+      "f1": 97,
+      "tp": 255,
+      "fp": 0,
+      "tn": 270,
+      "fn": 15
+    }
+  },
+  "coverage": {
+    "match": 255,
+    "negative": 250,
+    "review": 35,
+    "matchRate": 47,
+    "negativeRate": 46,
+    "reviewRate": 6,
+    "automationCoverage": 94,
+    "automatedDecisionAccuracy": 100
+  }
+}

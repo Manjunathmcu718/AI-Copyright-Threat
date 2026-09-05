@@ -1,0 +1,201 @@
+{
+  "generatedAt": "2026-08-25T06:37:39.400241+00:00",
+  "seed": 20260825,
+  "threshold": 0.9,
+  "reviewFloor": 0.88,
+  "works": 5,
+  "sampleCount": 200,
+  "mediaRoot": "media/real_benchmark",
+  "signals": [
+    "visual",
+    "audio",
+    "scene",
+    "temporal",
+    "metadata"
+  ],
+  "negativeDesign": "cross-work negatives compare every protected work against transformed variants of every other generated work, including a deliberate Project Monsoon lookalike",
+  "decisionPolicy": {
+    "match": "adaptive score >= 0.9",
+    "review": "0.88 <= adaptive score < 0.9",
+    "negative": "adaptive score < 0.88"
+  },
+  "rows": [
+    {
+      "key": "clean",
+      "transformation": "Clean",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "examples": 25,
+      "note": "Original-quality copy",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "compression",
+      "transformation": "Compression",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "examples": 25,
+      "note": "JPEG-style frame compression",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "resolution",
+      "transformation": "Resolution",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "examples": 25,
+      "note": "Downscale then upscale",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "crop",
+      "transformation": "Crop",
+      "baseline": 0,
+      "cineshield": 100,
+      "gain": 100,
+      "degradation": 0,
+      "examples": 25,
+      "note": "Cropped edges then resized",
+      "baselinePrecision": 0,
+      "baselineRecall": 0,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "watermark",
+      "transformation": "Watermark",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "examples": 25,
+      "note": "Overlay watermark",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "audio_mod",
+      "transformation": "Audio Mod",
+      "baseline": 100,
+      "cineshield": 100,
+      "gain": 0,
+      "degradation": 0,
+      "examples": 25,
+      "note": "Noise and amplitude modulation",
+      "baselinePrecision": 100,
+      "baselineRecall": 100,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "partial",
+      "transformation": "Partial",
+      "baseline": 75,
+      "cineshield": 100,
+      "gain": 25,
+      "degradation": 0,
+      "examples": 25,
+      "note": "Short middle clip",
+      "baselinePrecision": 100,
+      "baselineRecall": 60,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    },
+    {
+      "key": "combined",
+      "transformation": "Combined",
+      "baseline": 0,
+      "cineshield": 100,
+      "gain": 100,
+      "degradation": 0,
+      "examples": 25,
+      "note": "Crop + watermark + compression + audio noise",
+      "baselinePrecision": 0,
+      "baselineRecall": 0,
+      "adaptivePrecision": 100,
+      "adaptiveRecall": 100
+    }
+  ],
+  "overall": {
+    "baseline": {
+      "precision": 100,
+      "recall": 70,
+      "f1": 82,
+      "tp": 28,
+      "fp": 0,
+      "tn": 160,
+      "fn": 12
+    },
+    "adaptive": {
+      "precision": 100,
+      "recall": 100,
+      "f1": 100,
+      "tp": 40,
+      "fp": 0,
+      "tn": 160,
+      "fn": 0
+    }
+  },
+  "coverage": {
+    "match": 40,
+    "negative": 105,
+    "review": 55,
+    "matchRate": 20,
+    "negativeRate": 52,
+    "reviewRate": 28,
+    "automationCoverage": 72,
+    "automatedDecisionAccuracy": 100
+  },
+  "sampleCase": {
+    "transformation": "crop",
+    "baseline": 88,
+    "adaptive": 96,
+    "signals": {
+      "visual": 81,
+      "audio": 99,
+      "scene": 99,
+      "temporal": 95,
+      "metadata": 100
+    },
+    "weights": {
+      "visual": 11,
+      "audio": 36,
+      "scene": 31,
+      "temporal": 13,
+      "metadata": 8
+    },
+    "video": "media/real_benchmark/videos/work_03_crop.avi",
+    "audio": "media/real_benchmark/audio/work_03_crop.wav"
+  },
+  "reviewCase": {
+    "transformation": "combined",
+    "baseline": 81,
+    "adaptive": 90,
+    "signals": {
+      "visual": 74,
+      "audio": 85,
+      "scene": 97,
+      "temporal": 92,
+      "metadata": 100
+    },
+    "video": "media/real_benchmark/videos/work_01_combined.avi",
+    "audio": "media/real_benchmark/audio/work_01_combined.wav"
+  }
+}

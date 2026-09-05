@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">CineShield mark</title>
+  <desc id="desc">Shield mark with film-frame and DNA signal lines.</desc>
+  <rect width="64" height="64" rx="8" fill="#101312"/>
+  <path d="M32 7 52 15v14c0 13.5-7.8 23.4-20 28-12.2-4.6-20-14.5-20-28V15l20-8Z" fill="#0a0d0c" stroke="#e5ad49" stroke-width="3"/>
+  <path d="M23 20c6 0 12 24 18 24M41 20c-6 0-12 24-18 24" fill="none" stroke="#42d3c8" stroke-width="3" stroke-linecap="round"/>
+  <path d="M24 27h16M23 37h18" fill="none" stroke="#f2eadc" stroke-width="3" stroke-linecap="round"/>
+  <path d="M17 18h6M17 26h6M41 18h6M41 26h6" stroke="#ef7564" stroke-width="3" stroke-linecap="round"/>
+</svg>
