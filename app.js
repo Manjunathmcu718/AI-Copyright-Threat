@@ -1220,6 +1220,7 @@ function readDiscoveryForm() {
     aliases: protectedAliases.length ? protectedAliases : webAliases,
     authorizedDomains: parseListInput($("#authorized-domain-input")?.value || ""),
     sourceDomains: parseListInput($("#source-domain-input")?.value || ""),
+    riskTerms: parseListInput($("#risk-term-input")?.value || "movierulz, netmirror, ibomma, tamilrockers, filmyzilla, 9xmovies, telegram, torrent"),
     providers: parseListInput($("#discovery-provider-input")?.value || "brave, bing, google, commoncrawl"),
     expandDepth: readNumberInput("#expand-depth-input", 1, 0, 2),
     expandPages: readNumberInput("#expand-pages-input", 16, 0, 32),
@@ -1353,7 +1354,7 @@ async function runWebDiscovery() {
 }
 
 async function runWebSearch(options = {}) {
-  const { title, aliases, authorizedDomains, sourceDomains, providers, expandDepth, expandPages, perDomainPageLimit } = readDiscoveryForm();
+  const { title, aliases, authorizedDomains, sourceDomains, riskTerms, providers, expandDepth, expandPages, perDomainPageLimit } = readDiscoveryForm();
   const blindSearch = Boolean(options.blind);
   const activeSourceDomains = blindSearch ? [] : sourceDomains;
 
@@ -1381,6 +1382,7 @@ async function runWebSearch(options = {}) {
       aliases,
       authorizedDomains,
       sourceDomains: activeSourceDomains,
+      riskTerms,
       providers,
       maxResults: 12,
       deepScanPages: 6,

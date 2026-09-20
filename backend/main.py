@@ -70,6 +70,7 @@ class DiscoverySearchRequest(BaseModel):
     aliases: List[str] = Field(default_factory=list)
     authorizedDomains: List[str] = Field(default_factory=list)
     sourceDomains: List[str] = Field(default_factory=list)
+    riskTerms: List[str] = Field(default_factory=list)
     providers: List[str] = Field(default_factory=lambda: ["brave", "bing", "google", "commoncrawl"])
     maxResults: int = 12
     deepScanPages: int = 6
@@ -201,6 +202,7 @@ def discovery_search(request: DiscoverySearchRequest) -> dict:
         aliases=request.aliases,
         authorized_domains=request.authorizedDomains,
         source_domains=request.sourceDomains,
+        risk_terms=request.riskTerms,
         providers=request.providers,
         max_results=request.maxResults,
         deep_scan_pages=request.deepScanPages,

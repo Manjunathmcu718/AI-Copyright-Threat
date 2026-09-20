@@ -96,6 +96,17 @@ STRONG_COPY_HINTS = {
     "bluray",
     "rip",
 }
+DEFAULT_RISK_ECOSYSTEM_TERMS = (
+    "movierulz",
+    "netmirror",
+    "ibomma",
+    "tamilrockers",
+    "filmyzilla",
+    "9xmovies",
+    "telegram",
+    "torrent",
+)
+RISK_ECOSYSTEM_TERM_SET = set(DEFAULT_RISK_ECOSYSTEM_TERMS)
 SUSPECT_HINTS = WEAK_DISTRIBUTION_HINTS | MEDIUM_DISTRIBUTION_HINTS | STRONG_COPY_HINTS
 INFORMATIONAL_HINTS = {
     "news",
@@ -455,6 +466,7 @@ def score_candidate(query_tokens: set[str], title: str, url: str, context: str) 
     strong_tokens = all_tokens & STRONG_COPY_HINTS
     distribution_tokens = weak_tokens | medium_tokens | strong_tokens
     informational_tokens = all_tokens & INFORMATIONAL_HINTS
+    risk_surface_tokens = all_tokens & RISK_ECOSYSTEM_TERM_SET
 
     title_hits = len(query_tokens & title_tokens)
     url_hits = len(query_tokens & url_tokens)
@@ -477,7 +489,14 @@ def score_candidate(query_tokens: set[str], title: str, url: str, context: str) 
     strong_score = min(12, len(strong_tokens) * 4)
     distribution_score = min(15, weak_score + medium_score + strong_score)
     direct_media_url_score = 10 if is_media_reference_url(url) else 0
-    domain_context_score = min(15, direct_media_url_score + len(strong_tokens & url_tokens) * 3 + len(medium_tokens & url_tokens) * 2)
+    risk_surface_score = min(12, len(risk_surface_tokens) * 6)
+    domain_context_score = min(
+        15,
+        direct_media_url_score
+        + len(strong_tokens & url_tokens) * 3
+        + len(medium_tokens & url_tokens) * 2
+        + len(risk_surface_tokens & url_tokens) * 5,
+    )
     independent_signal_count = 0
     if title_hits:
         independent_signal_count += 1
@@ -490,6 +509,8 @@ def score_candidate(query_tokens: set[str], title: str, url: str, context: str) 
     if medium_tokens:
         independent_signal_count += 1
     if strong_tokens:
+        independent_signal_count += 2
+    if risk_surface_tokens:
         independent_signal_count += 2
     if direct_media_url_score:
         independent_signal_count += 2
@@ -504,6 +525,7 @@ def score_candidate(query_tokens: set[str], title: str, url: str, context: str) 
             + distribution_score
             + media_context_score
             + domain_context_score
+            + risk_surface_score
             + independent_score
             - information_penalty,
         ),
@@ -522,6 +544,8 @@ def score_candidate(query_tokens: set[str], title: str, url: str, context: str) 
         reasons.append(f"Medium distribution-language signal: {', '.join(sorted(medium_tokens)[:4])}")
     if strong_tokens:
         reasons.append(f"Strong copy-like signal: {', '.join(sorted(strong_tokens)[:4])}")
+    if risk_surface_tokens:
+        reasons.append(f"Risk-surface term found in public metadata: {', '.join(sorted(risk_surface_tokens)[:4])}")
     if media_tokens:
         reasons.append(f"Media-page hint detected: {', '.join(sorted(media_tokens)[:3])}")
     if informational_tokens:
@@ -537,18 +561,21 @@ def score_candidate(query_tokens: set[str], title: str, url: str, context: str) 
         "titleRelevanceScore": title_relevance_score,
         "distributionScore": distribution_score,
         "domainContextScore": domain_context_score,
+        "riskSurfaceScore": risk_surface_score,
         "independentSignalScore": independent_score,
         "mediaContextScore": media_context_score,
         "informationPenalty": information_penalty,
         "weakDistributionSignals": sorted(weak_tokens),
         "mediumDistributionSignals": sorted(medium_tokens),
         "strongCopySignals": sorted(strong_tokens),
+        "riskSurfaceSignals": sorted(risk_surface_tokens),
         "signals": {
             "Metadata relevance": metadata_score,
             "Title relevance": title_relevance_score,
             "Distribution signals": distribution_score,
             "Media evidence": 0,
             "Domain/context": domain_context_score,
+            "Risk surface": risk_surface_score,
             "Independent signals": independent_score,
             "Informational penalty": information_penalty,
         },
@@ -601,11 +628,17 @@ def build_search_queries(
     title: str,
     aliases: Optional[Iterable[str]] = None,
     source_domains: Optional[Iterable[str]] = None,
+    risk_terms: Optional[Iterable[str]] = None,
 ) -> List[str]:
     protected_title = normalize_search_phrase(title)
     alias_list = [normalize_search_phrase(alias) for alias in aliases or [] if normalize_search_phrase(alias)]
     names = [name for name in [protected_title, *alias_list] if name]
     domains = [normalize_domain(domain) for domain in source_domains or [] if normalize_domain(domain)]
+    surface_terms = [
+        normalize_search_phrase(term)
+        for term in (risk_terms if risk_terms is not None else DEFAULT_RISK_ECOSYSTEM_TERMS)
+        if normalize_search_phrase(term)
+    ]
     queries: List[str] = []
     content_intents = [""]
     distribution_intents = [
@@ -635,9 +668,13 @@ def build_search_queries(
                 queries.append(f'site:{domain} "{name}" "watch online"')
                 queries.append(f'site:{domain} "{name}" "download"')
     else:
-        for name in names[:4]:
+        for name in names[:3]:
             for intent in content_intents:
                 queries.append(f'"{name}" {intent}'.strip())
+            for term in surface_terms[:8]:
+                queries.append(f'"{name}" "{term}"')
+            for term in surface_terms[:4]:
+                queries.append(f'"{name}" "{term}" "download"')
             for intent in distribution_intents:
                 queries.append(f'"{name}" "{intent}"')
             for intent in copy_like_intents:
@@ -650,7 +687,7 @@ def build_search_queries(
         if cleaned and cleaned not in seen:
             seen.add(cleaned)
             deduped.append(cleaned)
-    return deduped[:18]
+    return deduped[:28]
 
 
 def brave_search(
@@ -1380,6 +1417,7 @@ def search_public_web(
     aliases: Optional[Iterable[str]] = None,
     authorized_domains: Optional[Iterable[str]] = None,
     source_domains: Optional[Iterable[str]] = None,
+    risk_terms: Optional[Iterable[str]] = None,
     providers: Optional[Iterable[str]] = None,
     max_results: int = 12,
     deep_scan_pages: int = 6,
@@ -1402,7 +1440,7 @@ def search_public_web(
     authorized_set = normalize_domains(authorized_domains)
     source_focus = [normalize_domain(domain) for domain in source_domains or [] if normalize_domain(domain)]
     query_tokens = tokenize(protected_title, *alias_list)
-    queries = build_search_queries(protected_title, alias_list, source_focus)
+    queries = build_search_queries(protected_title, alias_list, source_focus, risk_terms)
     requested_providers = ["test"] if searcher else normalize_provider_names(providers)
 
     provider_entries: List[Dict[str, str]] = []

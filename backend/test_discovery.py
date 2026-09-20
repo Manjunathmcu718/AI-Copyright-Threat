@@ -188,6 +188,36 @@ def test_public_source_scan_marks_unknown_media_page_high_risk():
     assert candidate["finalDecisionStage"] == "MEDIA_FOUND"
 
 
+def test_public_source_scan_marks_risk_surface_terms_without_claiming_match():
+    html = """
+    <html>
+      <head>
+        <title>Salaar Movierulz 1080p download mirror links</title>
+        <meta name="description" content="Salaar full movie download mirror discussion">
+      </head>
+      <body>Salaar download links mirror archive and WEB-DL discussion.</body>
+    </html>
+    """
+
+    def fake_fetcher(url: str) -> FetchResult:
+        return FetchResult(url=url, final_url=url, status=200, content_type="text/html", text=html)
+
+    result = scan_public_sources(
+        title="Salaar",
+        aliases=["Salaar Part 1 Ceasefire"],
+        seed_urls=["https://unknown.example/salaar-movierulz-download"],
+        fetcher=fake_fetcher,
+        validate_urls=False,
+    )
+
+    candidate = result["candidates"][0]
+    assert candidate["riskScore"] >= 35
+    assert candidate["sourceClass"] in {"SUSPECTED", "UNKNOWN"}
+    assert candidate["contentMatchScore"] is None
+    assert candidate["finalDecisionStage"] == "RELEVANT"
+    assert any("Risk-surface term" in reason for reason in candidate["reasons"])
+
+
 def test_public_source_scan_reports_source_failures():
     def fake_fetcher(url: str) -> FetchResult:
         raise TimeoutError("timed out")
@@ -232,6 +262,15 @@ def test_search_queries_normalize_uploaded_filename_titles():
     assert '"TRAIL COPY"' in queries
     assert '"TRAIL COPY" "watch online"' in queries
     assert '"TRAIL COPY" "WEB-DL"' in queries
+    assert len(queries) == len(set(queries))
+
+
+def test_search_queries_include_configurable_risk_surface_terms():
+    queries = build_search_queries("Salaar", ["Ceasefire"], risk_terms=["movierulz", "netmirror"])
+
+    assert '"Salaar" "movierulz"' in queries
+    assert '"Salaar" "netmirror"' in queries
+    assert '"Salaar" "movierulz" "download"' in queries
     assert len(queries) == len(set(queries))
 
 
