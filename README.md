@@ -1,6 +1,16 @@
-# CineShield
+<p align="center">
+  <img src="assets/cineshield-mark.svg" alt="CineShield logo" width="72" />
+</p>
 
-## Adaptive Multimodal Verification of Transformed Video Copies
+<h1 align="center">CineShield</h1>
+
+<p align="center">
+  <strong>Adaptive Multimodal Verification of Transformed Video Copies</strong>
+</p>
+
+<p align="center">
+  Final-Year CSE Major Project &nbsp;|&nbsp; Python &nbsp;|&nbsp; FastAPI &nbsp;|&nbsp; OpenCV &nbsp;|&nbsp; Evidence Fusion
+</p>
 
 CineShield is a final-year CSE major project that investigates whether **adaptive multimodal evidence fusion** can improve the identification of transformed copies of protected video content over visual-only and temporal-only matching methods.
 
@@ -10,29 +20,35 @@ The prototype compares an original video with candidate videos using visual fram
 
 > Can adaptive fusion of visual, scene, temporal, OCR/text, audio, and metadata evidence improve transformed-video copy detection compared with conventional single-modality matching, while maintaining practical processing time and computational cost?
 
+## At a Glance
+
+| Area | CineShield approach |
+| --- | --- |
+| **Input** | An original video and one or more permitted candidate videos |
+| **Core idea** | Build a Content DNA profile and verify sustained correspondence across multiple signals |
+| **Output** | `MATCH`, `REVIEW`, or `NO MATCH`, with scores, timestamps, and evidence reasoning |
+| **Research comparison** | Visual-only baseline vs. temporal-only baseline vs. adaptive fused evidence |
+| **Primary users** | Rights teams, content platforms, researchers, and media-review workflows |
+| **Boundary** | Evidence support only: no legal decision, automated takedown, access-control bypass, or unauthorized downloading |
+
 ## Motivation
 
 Digital video can be altered before being redistributed. Common transformations include re-encoding, cropping, watermarks, resolution changes, subtitle overlays, partial clips, audio modification, screen recording, and timing shifts. A filename or one visually similar frame is not sufficient evidence that two videos are derived from the same underlying work.
 
 CineShield focuses on the verification problem:
 
-```text
-Protected video
-      |
-      v
-Content DNA profile
-      |
-      v
-Candidate video or permitted direct media file
-      |
-      v
-Multimodal evidence extraction and adaptive fusion
-      |
-      v
-MATCH / REVIEW / NO MATCH
-      |
-      v
-Timestamped evidence case for human review
+```mermaid
+flowchart LR
+    A[Protected original] --> B[Content DNA]
+    C[Candidate video] --> D[Evidence extraction]
+    B --> E[Adaptive fusion]
+    D --> E
+    E --> F{Decision}
+    F -->|Strong evidence| G[MATCH]
+    F -->|Borderline evidence| H[REVIEW]
+    F -->|Insufficient evidence| I[NO MATCH]
+    G --> J[Timestamped evidence case]
+    H --> J
 ```
 
 ## Technical Contribution
@@ -151,7 +167,7 @@ cd D:\Buildathon
 python -m http.server 8080
 ```
 
-Open [http://127.0.0.1:8080/index.html](http://127.0.0.1:8080/index.html).
+Dashboard address: `http://127.0.0.1:8080/index.html`
 
 ### Optional Public Discovery
 
