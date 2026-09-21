@@ -9,10 +9,10 @@
 </p>
 
 <p align="center">
-  Final-Year CSE Major Project &nbsp;|&nbsp; Python &nbsp;|&nbsp; FastAPI &nbsp;|&nbsp; OpenCV &nbsp;|&nbsp; Evidence Fusion
+  Python &nbsp;|&nbsp; FastAPI &nbsp;|&nbsp; OpenCV &nbsp;|&nbsp; Evidence Fusion
 </p>
 
-CineShield is a final-year CSE major project that investigates whether **adaptive multimodal evidence fusion** can improve the identification of transformed copies of protected video content over visual-only and temporal-only matching methods.
+CineShield investigates whether **adaptive multimodal evidence fusion** can improve the identification of transformed copies of protected video content over visual-only and temporal-only matching methods.
 
 The prototype compares an original video with candidate videos using visual frame evidence, scene order, temporal consistency, duration, coverage, and supporting page metadata. It produces an explainable technical outcome: `MATCH`, `REVIEW`, or `NO MATCH`. Every action remains human-gated; CineShield prepares evidence and does not make legal decisions or issue takedowns.
 
