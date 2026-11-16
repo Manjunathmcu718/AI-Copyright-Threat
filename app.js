@@ -1384,10 +1384,13 @@ async function runWebSearch(options = {}) {
       sourceDomains: activeSourceDomains,
       riskTerms,
       providers,
-      maxResults: 12,
-      deepScanPages: 6,
-      expandDepth,
-      expandPages,
+      // Keep manual discovery responsive. Longer monitoring can run repeated
+      // bounded passes instead of holding this interactive request open.
+      maxQueryVariants: 6,
+      maxResults: 6,
+      deepScanPages: 3,
+      expandDepth: Math.min(expandDepth, 1),
+      expandPages: Math.min(expandPages, 4),
       perDomainPageLimit,
       country: "IN",
       searchLang: "en"

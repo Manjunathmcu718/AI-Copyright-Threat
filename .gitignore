@@ -4,3 +4,17 @@ __pycache__/
 node_modules/
 .DS_Store
 .env
+
+# Separate project workspace; it has its own Git repository.
+/first-commit-cineshield/
+
+# Local scan inputs, downloaded URL candidates, and generated support files.
+# Existing committed fixtures remain tracked by Git.
+/data/protected/*.mp4
+/data/url_candidates/
+/output/pdf/cineshield-viva-guide.pdf
+/tmp/cineshield-api.*
+/tmp/pdfs/cineshield-viva-*
+/tmp/pdfs/create_cineshield_viva_guide.py
+/tmp/pdfs/render_viva_guide.py
+/tmp/pdfs/viva-render/

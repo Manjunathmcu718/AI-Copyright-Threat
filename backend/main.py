@@ -72,6 +72,7 @@ class DiscoverySearchRequest(BaseModel):
     sourceDomains: List[str] = Field(default_factory=list)
     riskTerms: List[str] = Field(default_factory=list)
     providers: List[str] = Field(default_factory=lambda: ["brave", "bing", "google", "commoncrawl"])
+    maxQueryVariants: int = 6
     maxResults: int = 12
     deepScanPages: int = 6
     expandDepth: int = 1
@@ -141,7 +142,9 @@ async def scan_url_candidates(protected: UploadFile = File(...), request: str = 
         raise HTTPException(status_code=400, detail="Protected video file is required.")
 
     protected_name = Path(protected.filename).name
-    protected_path = PROTECTED_DIR / protected_name
+    # Keep URL-verification runs isolated so a previously uploaded file cannot
+    # be overwritten or held open by another scan on Windows.
+    protected_path = PROTECTED_DIR / f"{uuid4().hex}_{protected_name}"
     protected_path.parent.mkdir(parents=True, exist_ok=True)
     with protected_path.open("wb") as handle:
         while chunk := await protected.read(65536):
@@ -166,10 +169,16 @@ async def scan_url_candidates(protected: UploadFile = File(...), request: str = 
         result["evidenceLevel"] = 4
         result["evidenceLevelLabel"] = "Multimodal match"
 
+    investigation = build_investigation(results)
+    investigation["sourceBoundary"] = (
+        "This investigation uses an authorized direct public candidate media URL. "
+        "The downloaded file is used only for Content DNA comparison and human-reviewed evidence."
+    )
+
     return {
         "scanned": len(results),
         "results": results,
-        "investigation": build_investigation(results),
+        "investigation": investigation,
         "downloadedCandidates": downloaded,
         "rejectedCandidates": rejected,
         "boundary": url_verification_boundary(),
@@ -204,6 +213,7 @@ def discovery_search(request: DiscoverySearchRequest) -> dict:
         source_domains=request.sourceDomains,
         risk_terms=request.riskTerms,
         providers=request.providers,
+        query_limit=request.maxQueryVariants,
         max_results=request.maxResults,
         deep_scan_pages=request.deepScanPages,
         expand_depth=request.expandDepth,

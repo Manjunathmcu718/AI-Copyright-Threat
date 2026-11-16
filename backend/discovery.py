@@ -1419,6 +1419,7 @@ def search_public_web(
     source_domains: Optional[Iterable[str]] = None,
     risk_terms: Optional[Iterable[str]] = None,
     providers: Optional[Iterable[str]] = None,
+    query_limit: int = 6,
     max_results: int = 12,
     deep_scan_pages: int = 6,
     expand_depth: int = 1,
@@ -1440,7 +1441,11 @@ def search_public_web(
     authorized_set = normalize_domains(authorized_domains)
     source_focus = [normalize_domain(domain) for domain in source_domains or [] if normalize_domain(domain)]
     query_tokens = tokenize(protected_title, *alias_list)
-    queries = build_search_queries(protected_title, alias_list, source_focus, risk_terms)
+    query_plan = build_search_queries(protected_title, alias_list, source_focus, risk_terms)
+    # Interactive discovery must return promptly. The complete query plan is
+    # intentionally broader, while this bounded subset is issued per run.
+    bounded_query_limit = max(1, min(int(query_limit or 6), 12))
+    queries = query_plan[:bounded_query_limit]
     requested_providers = ["test"] if searcher else normalize_provider_names(providers)
 
     provider_entries: List[Dict[str, str]] = []
