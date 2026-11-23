@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0a0d0b" />
+    <meta name="theme-color" content="#0b0f18" />
     <title>CineShield | Video copy verification</title>
-    <link rel="stylesheet" href="./clean-styles.css?v=20261123-4" />
+    <link rel="stylesheet" href="./clean-styles.css?v=20261124-3" />
   </head>
   <body class="clean-ui">
     <div class="verification-desk" id="desk-top">
@@ -18,7 +18,7 @@
       <main>
         <section class="desk-hero desk-wrap" aria-labelledby="desk-title">
           <div class="desk-hero-copy">
-            <p class="desk-eyebrow">Video copy verification</p>
+            <p class="desk-eyebrow">Adaptive multimodal video verification</p>
             <h1 id="desk-title">Find the copy.<br /><em>See the proof.</em></h1>
             <p class="desk-hero-summary">CineShield compares an original video with suspected copies and explains the result using real frame, sequence, timing, duration, and coverage evidence.</p>
             <div class="desk-hero-actions"><button class="desk-primary desk-primary-hero" type="button" data-desk-scroll="#desk-verify">Start a comparison <span aria-hidden="true">→</span></button></div>
@@ -27,8 +27,20 @@
           </div>
           <aside class="desk-signal-stage" aria-label="Live verification preview">
             <div class="desk-stage-head"><span>Live verification desk</span><i><b></b> Ready</i></div>
-            <div class="desk-fingerprint" aria-hidden="true"><div class="desk-fingerprint-grid"></div><span class="desk-fingerprint-line line-one"></span><span class="desk-fingerprint-line line-two"></span><span class="desk-fingerprint-line line-three"></span><span class="desk-fingerprint-line line-four"></span><span class="desk-fingerprint-line line-five"></span><div class="desk-fingerprint-tag">CONTENT DNA</div></div>
+            <div class="desk-dna-window" aria-hidden="true">
+              <div class="desk-dna-cells">
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <div class="desk-dna-window-scan"></div>
+              <div class="desk-dna-tag">CONTENT DNA</div>
+            </div>
+            <div class="desk-scan-bars" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+              <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+            </div>
             <div class="desk-stage-foot"><div><span>Original</span><strong id="desk-hero-original">Waiting for video</strong></div><div><span>Candidate</span><strong id="desk-hero-candidate">Waiting for video</strong></div></div>
+            <div class="desk-signal-pills" aria-label="Signals used in a completed comparison"><span>Visual</span><span>Scene</span><span>Timing</span><span>Coverage</span></div>
           </aside>
         </section>
 
@@ -37,7 +49,7 @@
         </section>
 
         <section class="desk-wrap desk-workspace" id="desk-verify" aria-labelledby="desk-verify-title">
-          <div class="desk-workspace-heading"><div><p class="desk-eyebrow">New comparison</p><h2 id="desk-verify-title">Choose the two sides of the check.</h2></div><button class="desk-quiet" id="desk-clear" type="button" disabled>Clear selection</button></div>
+          <div class="desk-workspace-heading"><div><p class="desk-eyebrow">Section 01 — New comparison</p><h2 id="desk-verify-title">Choose the two sides of the check.</h2></div><button class="desk-quiet" id="desk-clear" type="button" disabled>Clear selection</button></div>
           <div class="desk-upload-grid">
             <label class="desk-dropzone desk-dropzone-original" id="desk-protected-dropzone" for="desk-protected-input" title="Select the original video you own or are authorized to analyse"><span class="desk-file-mark" aria-hidden="true">01</span><span class="desk-dropzone-copy"><small>Original video</small><strong id="desk-protected-name">Select the video you own</strong><em id="desk-protected-meta">MP4, MOV, AVI, MKV, or WebM</em></span><span class="desk-upload-arrow" aria-hidden="true">↗</span><input id="desk-protected-input" type="file" accept="video/*" /></label>
             <label class="desk-dropzone" id="desk-candidate-dropzone" for="desk-candidate-input" title="Select one or more suspected copies to compare"><span class="desk-file-mark" aria-hidden="true">02</span><span class="desk-dropzone-copy"><small>Suspected copy</small><strong id="desk-candidate-name">Select one or more videos</strong><em id="desk-candidate-meta">You can add multiple candidates</em></span><span class="desk-upload-arrow" aria-hidden="true">↗</span><input id="desk-candidate-input" type="file" accept="video/*" multiple /></label>
@@ -48,7 +60,7 @@
         <section class="desk-wrap desk-live-strip" aria-label="Current activity"><div><span class="desk-live-dot" aria-hidden="true"></span><strong id="desk-live-label">Workspace ready</strong></div><p id="desk-live-copy">Your selected files stay on this local project while the comparison runs.</p></section>
 
         <section class="desk-wrap desk-result-shell" id="desk-results" aria-labelledby="desk-results-title">
-          <div class="desk-result-heading"><div><p class="desk-eyebrow">Verification result</p><h2 id="desk-results-title">Evidence that is easy to read.</h2></div><span class="desk-status" id="desk-status">Waiting</span></div>
+          <div class="desk-result-heading"><div><p class="desk-eyebrow">Section 02 — Verification result</p><h2 id="desk-results-title">Evidence you can read.</h2></div><span class="desk-status" id="desk-status">Waiting</span></div>
           <div class="desk-empty" id="desk-empty"><div class="desk-empty-visual" aria-hidden="true"><span></span><span></span><span></span></div><strong>Your result will appear here.</strong><p>Add an original and a candidate video, then choose <em>Compare videos</em>.</p></div>
           <div class="desk-results-layout" id="desk-results-layout" hidden><aside class="desk-candidate-aside"><p>Compared candidates</p><div id="desk-candidate-list"></div></aside><article id="desk-selected-result" aria-live="polite"></article></div>
         </section>
@@ -56,7 +68,7 @@
         <details class="desk-wrap desk-source" id="desk-source-check">
           <summary><span><strong>Web discovery</strong><small>Find and verify matching public-video evidence.</small></span><b aria-hidden="true">+</b></summary>
           <div class="desk-source-content">
-            <div class="desk-discovery-topline"><div><p class="desk-eyebrow">Controlled public source</p><p>Upload your original above, confirm authorization, then let CineShield look for a matching public video.</p></div><span class="desk-discovery-state" id="desk-discovery-state"><i aria-hidden="true"></i>Ready to check</span></div>
+            <div class="desk-discovery-topline"><div><p class="desk-eyebrow">Section 03 — Controlled public source</p><p>Upload your original above, confirm authorization, then let CineShield look for a matching public video.</p></div><span class="desk-discovery-state" id="desk-discovery-state"><i aria-hidden="true"></i>Ready to check</span></div>
             <ol class="desk-discovery-steps" aria-label="Web discovery steps"><li><span>01</span><strong>Original video</strong><small>Use the protected video you selected.</small></li><li><span>02</span><strong>Permission</strong><small>Confirm you can verify public evidence.</small></li><li><span>03</span><strong>Source check</strong><small>Match discovered media against Content DNA.</small></li></ol>
             <div class="desk-source-fields"><label class="desk-field"><span>Video title <i>Optional</i></span><input id="desk-source-title" type="text" placeholder="Uses the uploaded video name if blank" /></label></div>
             <label class="desk-check desk-discovery-consent"><input id="desk-url-authorized" type="checkbox" /><span><strong>I am authorized to run this check.</strong><small>CineShield will compare only public video evidence found during this controlled test.</small></span></label>
