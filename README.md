@@ -173,6 +173,8 @@ Dashboard address: `http://127.0.0.1:8080/index.html`
 
 Copy `.env.example` to `.env` and configure one or more search-provider keys before starting the backend. The discovery connector accepts public index results and publicly reachable pages only. It does not bypass CAPTCHAs, DRM, login restrictions, private groups, paywalls, or blocked sources.
 
+For a controlled public-source demonstration, set `CINESHIELD_CONTROLLED_SOURCE_URL` to a public website you own. The Web discovery action scans that source's public pages and sitemap, extracts direct public video-file references, and reports a match only after Content DNA comparison succeeds. If no matching media is present or verifiable, it reports no verifiable copy found.
+
 ## Project Documents
 
 - [Architecture notes](docs/architecture.md)

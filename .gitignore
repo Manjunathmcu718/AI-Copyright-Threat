@@ -11,9 +11,18 @@ node_modules/
 # Local scan inputs, downloaded URL candidates, and generated support files.
 # Existing committed fixtures remain tracked by Git.
 /data/protected/*.mp4
+# Keep the local MKV test recording on this computer; it is too large for GitHub.
+/data/protected/3f6cfc9e3c114108a5a029aab9984c97_2026-07-14 22-44-03.mkv
+/data/demo_copies/
 /data/url_candidates/
 /output/pdf/cineshield-viva-guide.pdf
 /tmp/cineshield-api.*
+/tmp/cineshield-web.*
+/tmp/cineshield-ui.*
+/tmp/cineshield-headless-*/
+/tmp/cineshield-cdp-profile/
+/tmp/cineshield-clean-*.png
+/tmp/frontend.*
 /tmp/pdfs/cineshield-viva-*
 /tmp/pdfs/create_cineshield_viva_guide.py
 /tmp/pdfs/render_viva_guide.py

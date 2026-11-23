@@ -367,6 +367,14 @@ function setWebDiscoveryStatus(status, tone = "", error = "") {
   renderWebDiscovery();
 }
 
+function updateActivity(message, busy = false) {
+  const activity = $("#activity-line");
+  const copy = activity?.querySelector("span:last-child");
+  const displayMessage = message === "Waiting" ? "Ready to compare your videos." : message;
+  if (copy && displayMessage) copy.textContent = displayMessage;
+  document.body.classList.toggle("is-busy", busy || localScanState.busy || webDiscoveryState.busy);
+}
+
 function parseListInput(value) {
   return String(value || "")
     .split(/[\n,]+/)
@@ -1498,6 +1506,7 @@ function renderLocalScanner() {
 
   status.textContent = localScanState.status;
   status.className = `status-pill ${localScanState.statusTone}`;
+  updateActivity(localScanState.error || localScanState.status, localScanState.busy);
   $$("[data-action='generate-local-dna'], [data-action='run-local-scan'], [data-action='run-url-candidate-scan'], [data-action='search-internet-for-work']").forEach((button) => {
     button.disabled = localScanState.busy;
   });
@@ -1531,18 +1540,18 @@ function renderLocalScanner() {
       ${localScanState.error ? `<div class="empty-state">${escapeHtml(localScanState.error)}</div>` : ""}
     `;
   } else {
-    $("#local-dna-title").textContent = "No local DNA yet";
+    $("#local-dna-title").textContent = "No fingerprint yet";
     $("#local-dna-summary").innerHTML = `
-      <div class="empty-state">${escapeHtml(localScanState.error || "Waiting for a protected video.")}</div>
+      <div class="empty-state">${escapeHtml(localScanState.error || "Choose the original video to create its fingerprint.")}</div>
     `;
   }
 
   if (!localScanState.results.length) {
-    $("#local-results-list").innerHTML = `<div class="empty-state">${escapeHtml(localScanState.error || "Run a local scan to rank candidates.")}</div>${renderUrlCandidateAudit()}`;
-    $("#local-case-title").textContent = "No candidate selected";
+    $("#local-results-list").innerHTML = `<div class="empty-state">${escapeHtml(localScanState.error || "Run comparison to see the videos you selected.")}</div>${renderUrlCandidateAudit()}`;
+    $("#local-case-title").textContent = "Waiting for a comparison";
     $("#local-case-decision").textContent = "Idle";
     $("#local-case-decision").className = "status-pill";
-    $("#local-case-detail").innerHTML = `<div class="empty-state">The highest scoring candidate appears here after scanning.</div>`;
+    $("#local-case-detail").innerHTML = `<div class="empty-state">The strongest result and its reasons will appear here.</div>`;
     return;
   }
 
@@ -1583,31 +1592,17 @@ function renderLocalScanner() {
       `
     )
     .join("");
-  const weightRows = Object.entries(selected.weights)
-    .map(
-      ([name, value]) => `
-        <div class="signal-row">
-          <span>${name}</span>
-          <span class="bar"><i style="--value: ${value * 2.4}%"></i></span>
-          <strong>${value}%</strong>
-        </div>
-      `
-    )
-    .join("");
-
   $("#local-case-title").textContent = selected.fileName;
   $("#local-case-decision").textContent = selected.decision;
   $("#local-case-decision").className = `status-pill ${selected.decision === "Match" ? "ready" : selected.decision === "Review" ? "warning" : "danger"}`;
   $("#local-case-detail").innerHTML = `
     <span class="decision-pill ${decisionClass(selected.decision)}">${selected.decision}</span>
     <div class="empty-state">${escapeHtml(investigationSummary)}</div>
-    <div class="detail-row"><span>Adaptive match</span><strong>${selected.confidence.toFixed(1)}%</strong></div>
-    <div class="detail-row"><span>Candidate DNA</span><strong>${selected.dnaId}</strong></div>
-    <div class="detail-row"><span>Access type</span><strong>${escapeHtml(selected.accessType || "Uploaded candidate file")}</strong></div>
-    <div class="detail-row"><span>Sampled frames</span><strong>${selected.sampledFrames || "Measured"}</strong></div>
+    <div class="detail-row"><span>Match confidence</span><strong>${selected.confidence.toFixed(1)}%</strong></div>
+    <div class="detail-row"><span>Source</span><strong>${escapeHtml(selected.accessType || "Uploaded video")}</strong></div>
+    <div class="detail-row"><span>Compared frames</span><strong>${selected.sampledFrames || "Measured"}</strong></div>
     ${selected.sourceUrl ? `<span class="path-chip">${escapeHtml(selected.sourceUrl)}</span>` : ""}
     <div class="local-case-metrics">${signalRows}</div>
-    <div class="local-case-metrics">${weightRows}</div>
     <ul class="reason-list">
       ${selected.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}
     </ul>
@@ -1744,6 +1739,7 @@ function renderWebDiscovery() {
 
   status.textContent = webDiscoveryState.status;
   status.className = `status-pill ${webDiscoveryState.statusTone}`;
+  updateActivity(webDiscoveryState.error || webDiscoveryState.status, webDiscoveryState.busy);
   $$("[data-action='run-web-discovery'], [data-action='run-web-search']").forEach((button) => {
     button.disabled = webDiscoveryState.busy;
   });
@@ -2866,43 +2862,8 @@ function runScan() {
     return;
   }
 
-  const discoveryForm = readDiscoveryForm();
-  if (discoveryForm.seedUrls.length) {
-    runWebDiscovery();
-    return;
-  }
-
-  if (discoveryForm.title) {
-    runWebSearch();
-    return;
-  }
-
-  state.stage = "discover";
-  renderTimeline();
-  $("#scan-status").textContent = "Scanning";
-  $("#scan-status").className = "status-pill warning";
-  setScanProgress(18, "Sampling fingerprints", "Visual, audio, scene, temporal, OCR, and metadata signals are being compared.");
-
-  const steps = [
-    [42, "Detecting transformations", "Compression, crop, watermark, subtitle edits, and partial clips are being profiled."],
-    [68, "Fusing evidence", "Adaptive weights are assigned based on the detected transformation profile."],
-    [88, "Building source graph", "Related candidates are grouped by content DNA, variant similarity, and distribution pattern."],
-    [100, "Search complete", "31 high-confidence matches found across 12 source clusters."]
-  ];
-
-  steps.forEach(([value, label, copy], index) => {
-    window.setTimeout(() => {
-      setScanProgress(value, label, copy);
-      state.stage = value < 68 ? "discover" : value < 88 ? "verify" : "graph";
-      renderTimeline();
-      if (value === 100) {
-        $("#scan-status").textContent = "Complete";
-        $("#scan-status").className = "status-pill ready";
-        state.stage = "graph";
-        renderTimeline();
-      }
-    }, 550 * (index + 1));
-  });
+  setLocalStatus("Add videos", "warning", "Choose an original video and at least one suspected copy first.");
+  document.querySelector("#live-scan")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function generateDna() {
@@ -2975,20 +2936,8 @@ function bindControls() {
 }
 
 function renderAll() {
-  renderSummaryMetrics();
-  renderDnaSignals();
-  renderFusionStack();
-  renderTimeline();
   renderLocalScanner();
   renderWebDiscovery();
-  renderLab();
-  renderCandidates();
-  renderGraph();
-  renderNodeDetail();
-  renderInvestigator();
-  renderCase();
-  renderBenchmark();
-  renderRealMediaBenchmark();
 }
 
 renderAll();

@@ -3,10 +3,83 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CineShield 2.0</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <meta name="theme-color" content="#0a0d0b" />
+    <title>CineShield | Video copy verification</title>
+    <link rel="stylesheet" href="./clean-styles.css?v=20261123-4" />
   </head>
-  <body>
+  <body class="clean-ui">
+    <div class="verification-desk" id="desk-top">
+      <header class="desk-header">
+        <a class="desk-brand" href="#desk-top" aria-label="CineShield home"><img src="./assets/cineshield-mark.svg" alt="" /><span>CineShield</span></a>
+        <nav class="desk-nav" aria-label="Main navigation"><a href="#desk-verify">Verify</a><a href="#desk-results">Results</a><a href="#desk-source-check">Web discovery</a></nav>
+        <div class="desk-header-actions"><button class="desk-text-button" id="desk-open-source" type="button" title="Inspect a public page you are permitted to review">Check a public link</button><button class="desk-header-cta" id="desk-start" type="button">New check <span aria-hidden="true">↘</span></button></div>
+      </header>
+
+      <main>
+        <section class="desk-hero desk-wrap" aria-labelledby="desk-title">
+          <div class="desk-hero-copy">
+            <p class="desk-eyebrow">Video copy verification</p>
+            <h1 id="desk-title">Find the copy.<br /><em>See the proof.</em></h1>
+            <p class="desk-hero-summary">CineShield compares an original video with suspected copies and explains the result using real frame, sequence, timing, duration, and coverage evidence.</p>
+            <div class="desk-hero-actions"><button class="desk-primary desk-primary-hero" type="button" data-desk-scroll="#desk-verify">Start a comparison <span aria-hidden="true">→</span></button></div>
+            <p class="desk-hero-note"><span aria-hidden="true">●</span> Your selected videos are analysed on this computer. Web discovery runs only when you choose it.</p>
+            <div class="desk-activity" id="desk-activity" role="status" aria-live="polite"><span aria-hidden="true"></span><div><strong id="desk-activity-title">Ready when you are</strong><small id="desk-activity-detail">Add an original video and at least one candidate to begin.</small></div></div>
+          </div>
+          <aside class="desk-signal-stage" aria-label="Live verification preview">
+            <div class="desk-stage-head"><span>Live verification desk</span><i><b></b> Ready</i></div>
+            <div class="desk-fingerprint" aria-hidden="true"><div class="desk-fingerprint-grid"></div><span class="desk-fingerprint-line line-one"></span><span class="desk-fingerprint-line line-two"></span><span class="desk-fingerprint-line line-three"></span><span class="desk-fingerprint-line line-four"></span><span class="desk-fingerprint-line line-five"></span><div class="desk-fingerprint-tag">CONTENT DNA</div></div>
+            <div class="desk-stage-foot"><div><span>Original</span><strong id="desk-hero-original">Waiting for video</strong></div><div><span>Candidate</span><strong id="desk-hero-candidate">Waiting for video</strong></div></div>
+          </aside>
+        </section>
+
+        <section class="desk-wrap desk-command-bar" aria-label="CineShield workflow">
+          <div class="desk-command-step is-active" id="desk-command-upload"><span>01</span><strong>Add videos</strong><small>Original + candidate</small></div><div class="desk-command-line" aria-hidden="true"></div><div class="desk-command-step" id="desk-command-compare"><span>02</span><strong>Compare</strong><small>Content DNA analysis</small></div><div class="desk-command-line" aria-hidden="true"></div><div class="desk-command-step" id="desk-command-review"><span>03</span><strong>Review</strong><small>Clear evidence result</small></div>
+        </section>
+
+        <section class="desk-wrap desk-workspace" id="desk-verify" aria-labelledby="desk-verify-title">
+          <div class="desk-workspace-heading"><div><p class="desk-eyebrow">New comparison</p><h2 id="desk-verify-title">Choose the two sides of the check.</h2></div><button class="desk-quiet" id="desk-clear" type="button" disabled>Clear selection</button></div>
+          <div class="desk-upload-grid">
+            <label class="desk-dropzone desk-dropzone-original" id="desk-protected-dropzone" for="desk-protected-input" title="Select the original video you own or are authorized to analyse"><span class="desk-file-mark" aria-hidden="true">01</span><span class="desk-dropzone-copy"><small>Original video</small><strong id="desk-protected-name">Select the video you own</strong><em id="desk-protected-meta">MP4, MOV, AVI, MKV, or WebM</em></span><span class="desk-upload-arrow" aria-hidden="true">↗</span><input id="desk-protected-input" type="file" accept="video/*" /></label>
+            <label class="desk-dropzone" id="desk-candidate-dropzone" for="desk-candidate-input" title="Select one or more suspected copies to compare"><span class="desk-file-mark" aria-hidden="true">02</span><span class="desk-dropzone-copy"><small>Suspected copy</small><strong id="desk-candidate-name">Select one or more videos</strong><em id="desk-candidate-meta">You can add multiple candidates</em></span><span class="desk-upload-arrow" aria-hidden="true">↗</span><input id="desk-candidate-input" type="file" accept="video/*" multiple /></label>
+          </div>
+          <div class="desk-workspace-footer"><label class="desk-field" for="desk-work-title"><span>Work title <i>Optional</i></span><input id="desk-work-title" type="text" placeholder="Example: My short film" /></label><div class="desk-run-area"><button class="desk-quiet" id="desk-create-copy" type="button" disabled title="Create a transformed copy for your controlled public-website test">Create test copy</button><button class="desk-primary desk-run-button" id="desk-run-scan" type="button" disabled><span>Compare videos</span><b aria-hidden="true">→</b></button><p>We compare the selected videos and show the strongest evidence.</p></div></div>
+        </section>
+
+        <section class="desk-wrap desk-live-strip" aria-label="Current activity"><div><span class="desk-live-dot" aria-hidden="true"></span><strong id="desk-live-label">Workspace ready</strong></div><p id="desk-live-copy">Your selected files stay on this local project while the comparison runs.</p></section>
+
+        <section class="desk-wrap desk-result-shell" id="desk-results" aria-labelledby="desk-results-title">
+          <div class="desk-result-heading"><div><p class="desk-eyebrow">Verification result</p><h2 id="desk-results-title">Evidence that is easy to read.</h2></div><span class="desk-status" id="desk-status">Waiting</span></div>
+          <div class="desk-empty" id="desk-empty"><div class="desk-empty-visual" aria-hidden="true"><span></span><span></span><span></span></div><strong>Your result will appear here.</strong><p>Add an original and a candidate video, then choose <em>Compare videos</em>.</p></div>
+          <div class="desk-results-layout" id="desk-results-layout" hidden><aside class="desk-candidate-aside"><p>Compared candidates</p><div id="desk-candidate-list"></div></aside><article id="desk-selected-result" aria-live="polite"></article></div>
+        </section>
+
+        <details class="desk-wrap desk-source" id="desk-source-check">
+          <summary><span><strong>Web discovery</strong><small>Find and verify matching public-video evidence.</small></span><b aria-hidden="true">+</b></summary>
+          <div class="desk-source-content">
+            <div class="desk-discovery-topline"><div><p class="desk-eyebrow">Controlled public source</p><p>Upload your original above, confirm authorization, then let CineShield look for a matching public video.</p></div><span class="desk-discovery-state" id="desk-discovery-state"><i aria-hidden="true"></i>Ready to check</span></div>
+            <ol class="desk-discovery-steps" aria-label="Web discovery steps"><li><span>01</span><strong>Original video</strong><small>Use the protected video you selected.</small></li><li><span>02</span><strong>Permission</strong><small>Confirm you can verify public evidence.</small></li><li><span>03</span><strong>Source check</strong><small>Match discovered media against Content DNA.</small></li></ol>
+            <div class="desk-source-fields"><label class="desk-field"><span>Video title <i>Optional</i></span><input id="desk-source-title" type="text" placeholder="Uses the uploaded video name if blank" /></label></div>
+            <label class="desk-check desk-discovery-consent"><input id="desk-url-authorized" type="checkbox" /><span><strong>I am authorized to run this check.</strong><small>CineShield will compare only public video evidence found during this controlled test.</small></span></label>
+            <div class="desk-source-actions"><button class="desk-discovery-run" id="desk-inspect-source" type="button"><span><strong>Run Web Discovery</strong><small>Find and verify a public copy</small></span><b aria-hidden="true">→</b></button></div>
+            <div class="desk-source-feedback" id="desk-source-feedback" aria-live="polite">Select the original video, confirm authorization, then run the check.</div>
+          </div>
+        </details>
+
+        <section class="desk-wrap desk-discovery-proof" id="desk-discovery-proof" hidden aria-labelledby="desk-proof-title">
+          <div class="desk-proof-heading"><div><p class="desk-eyebrow">Verified public discovery</p><h2 id="desk-proof-title">A matching video was found here.</h2></div><span class="desk-proof-status" id="desk-proof-status">Match</span></div>
+          <p class="desk-proof-summary" id="desk-proof-summary">CineShield found public video evidence and verified it against the uploaded original.</p>
+          <div class="desk-proof-grid">
+            <div class="desk-proof-item"><span>Source website</span><strong id="desk-proof-host">—</strong><small>Public source examined</small></div>
+            <div class="desk-proof-item"><span>Video page</span><a id="desk-proof-page" href="#" target="_blank" rel="noreferrer">Open watch page ↗</a><small id="desk-proof-page-url">—</small></div>
+            <div class="desk-proof-item"><span>Matched video</span><a id="desk-proof-media" href="#" target="_blank" rel="noreferrer">Open direct video ↗</a><small id="desk-proof-media-url">—</small></div>
+            <div class="desk-proof-item"><span>Verification</span><strong id="desk-proof-verification">—</strong><small>Content DNA comparison</small></div>
+          </div>
+        </section>
+      </main>
+      <footer class="desk-footer desk-wrap"><span>CineShield is for videos you own or are authorized to analyse.</span><span>Every result is evidence for human review.</span></footer>
+      <div class="desk-toast" id="desk-toast" role="status" aria-live="polite"></div>
+    </div>
+
     <div class="app-shell">
       <aside class="rail" aria-label="CineShield navigation">
         <a class="brand" href="#overview" aria-label="CineShield home">
@@ -15,51 +88,23 @@
         </a>
 
         <nav class="nav-stack">
-          <a class="nav-link active" href="#overview">
-            <span class="nav-index">01</span>
-            <span>Command</span>
-          </a>
-          <a class="nav-link" href="#live-scan">
-            <span class="nav-index">02</span>
-            <span>Live Scan</span>
-          </a>
-          <a class="nav-link" href="#dna">
-            <span class="nav-index">03</span>
-            <span>Content DNA</span>
-          </a>
-          <a class="nav-link" href="#discovery">
-            <span class="nav-index">04</span>
-            <span>Discovery</span>
-          </a>
-          <a class="nav-link" href="#graph">
-            <span class="nav-index">05</span>
-            <span>Threat Graph</span>
-          </a>
-          <a class="nav-link" href="#casework">
-            <span class="nav-index">06</span>
-            <span>Evidence</span>
-          </a>
+          <a class="nav-link active" href="#overview"><span>Home</span></a>
+          <a class="nav-link" href="#live-scan"><span>Compare videos</span></a>
+          <a class="nav-link" href="#discovery"><span>Check a public page</span></a>
+          <a class="nav-link" href="#results"><span>Results</span></a>
         </nav>
 
         <div class="rail-status">
-          <p class="eyebrow">Closed Loop</p>
-          <div class="loop-meter" aria-label="CineShield workflow completion">
-            <span style="--i: 0"></span>
-            <span style="--i: 1"></span>
-            <span style="--i: 2"></span>
-            <span style="--i: 3"></span>
-            <span style="--i: 4"></span>
-            <span style="--i: 5"></span>
-          </div>
-          <p class="small-copy">Discover, verify, map, prioritize, respond, monitor.</p>
+          <p class="eyebrow">Private by default</p>
+          <p class="small-copy">Your files are compared locally. Use public URLs only when you are allowed to check them.</p>
         </div>
       </aside>
 
       <main class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Open Track / AI Threat Intelligence</p>
-            <h1>CineShield 2.0</h1>
+          <p class="eyebrow">Video copy verification</p>
+          <h1>Check a suspected video copy.</h1>
           </div>
           <div class="topbar-actions" aria-label="Global actions">
             <button class="icon-button" type="button" aria-label="Export architecture" title="Export architecture">
@@ -71,32 +116,31 @@
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M11 19a8 8 0 1 1 5.66-2.34L21 21m-6-10h-4m2-2v4" />
               </svg>
-              Find My Content
+              Compare videos
             </button>
           </div>
         </header>
 
         <section class="hero-band" id="overview">
           <div class="mission-copy">
-            <p class="eyebrow">Copyright Immune System</p>
-            <h2>Content DNA for transformed-video detection.</h2>
+              <p class="eyebrow">Simple, explainable results</p>
+              <h2>Compare the original with a suspected copy.</h2>
             <p>
-              CineShield registers a copyrighted work, builds a multimodal DNA profile,
-              detects transformed copies, reconstructs source clusters, and produces
-              evidence-backed response cases for authorized review.
+              Add the original video and one or more candidates. CineShield compares their visual sequence,
+              timing, and coverage, then shows a clear result with the reasons behind it.
             </p>
             <div class="mission-actions">
               <button class="primary-button large" type="button" data-action="generate-dna">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M7 4c5 0 10 16 10 16M17 4C12 4 7 20 7 20M8.5 8h7M8.5 16h7M10 12h4" />
                 </svg>
-                Generate Content DNA
+                Start comparison
               </button>
               <button class="ghost-button large" type="button" data-action="select-highest">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 12h4l3-7 4 14 3-7h2" />
                 </svg>
-                Inspect Top Match
+                View latest result
               </button>
             </div>
           </div>
@@ -113,19 +157,19 @@
             <div class="registered-meta">
               <div>
                 <span class="label">Protected Work</span>
-                <strong>Project Monsoon</strong>
+              <strong>Your original video</strong>
               </div>
               <div>
                 <span class="label">Owner</span>
-                <strong>Sundial Pictures</strong>
+              <strong>Local comparison</strong>
               </div>
               <div>
                 <span class="label">Duration</span>
-                <strong>08:42 test reel</strong>
+              <strong>Upload to begin</strong>
               </div>
               <div>
                 <span class="label">Authorized Sources</span>
-                <strong>4 verified</strong>
+              <strong>Optional public-page check</strong>
               </div>
             </div>
           </div>
@@ -168,8 +212,8 @@
         <section class="panel local-scanner" id="live-scan" aria-label="Local video scanner">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Live Local Scanner</p>
-              <h3>Upload videos, generate DNA, compare candidates</h3>
+              <p class="eyebrow">New comparison</p>
+              <h3>Upload the original and the suspected copy</h3>
             </div>
             <span class="status-pill" id="local-scan-status">Waiting</span>
           </div>
@@ -182,9 +226,9 @@
                     <path d="M12 3v12m0-12 4 4m-4-4-4 4M5 15v4h14v-4" />
                   </svg>
                 </span>
-                <span class="label">Protected Work</span>
-                <strong id="protected-file-name">Select original video</strong>
-                <small id="protected-file-meta">MP4 or WebM recommended</small>
+                <span class="label">Original video</span>
+                <strong id="protected-file-name">Choose original video</strong>
+                <small id="protected-file-meta">MP4, WebM, MOV, AVI, or MKV</small>
               </label>
               <input class="file-input" id="protected-video-input" type="file" accept="video/*" />
             </div>
@@ -197,59 +241,62 @@
                     <path d="M12 13h4m-2-2v4" />
                   </svg>
                 </span>
-                <span class="label">Candidate Corpus</span>
-                <strong id="candidate-file-name">Select suspected copies</strong>
-                <small id="candidate-file-meta">Multiple local videos supported</small>
+                <span class="label">Suspected copy</span>
+                <strong id="candidate-file-name">Choose copy or copies</strong>
+                <small id="candidate-file-meta">You can select more than one file</small>
               </label>
               <input class="file-input" id="candidate-video-input" type="file" accept="video/*" multiple />
             </div>
           </div>
 
+          <details class="advanced-comparison">
+            <summary>Use a direct public link or add a title for public search</summary>
           <div class="registration-grid">
             <label class="form-field" for="protected-title-input">
-              <span class="label">Internet discovery title</span>
-              <input id="protected-title-input" type="text" autocomplete="off" placeholder="Example: Salaar" />
+              <span class="label">Title for public-page search</span>
+              <input id="protected-title-input" type="text" autocomplete="off" placeholder="Optional: My short film" />
             </label>
             <label class="form-field" for="protected-alias-input">
-              <span class="label">Search aliases</span>
-              <input id="protected-alias-input" type="text" autocomplete="off" placeholder="Example: Salaar Part 1, Ceasefire" />
+              <span class="label">Other names</span>
+              <input id="protected-alias-input" type="text" autocomplete="off" placeholder="Optional: alternate title" />
             </label>
           </div>
 
           <div class="url-candidate-panel">
             <label class="form-field" for="candidate-url-input">
-              <span class="label">Candidate media URLs</span>
-              <textarea id="candidate-url-input" rows="3" spellcheck="false" placeholder="Only direct public video file URLs you are authorized to process"></textarea>
+              <span class="label">Direct public video URL</span>
+              <textarea id="candidate-url-input" rows="3" spellcheck="false" placeholder="https://example.com/video.mp4"></textarea>
             </label>
             <label class="checkline" for="url-auth-confirm">
               <input id="url-auth-confirm" type="checkbox" />
-              <span>I confirm these candidate media URLs are permitted for verification.</span>
+              <span>I am allowed to verify this video URL.</span>
             </label>
             <label class="checkline" for="blind-verify-confirm">
               <input id="blind-verify-confirm" type="checkbox" />
-              <span>I authorize CineShield to verify direct public media references it discovers during my owned blind test.</span>
+              <span>I am allowed to verify any direct public video link discovered from my test page.</span>
             </label>
           </div>
+          </details>
 
           <div class="scanner-actions">
             <button class="primary-button" type="button" data-action="generate-local-dna">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M7 4c5 0 10 16 10 16M17 4C12 4 7 20 7 20M8.5 8h7M8.5 16h7M10 12h4" />
               </svg>
-              Generate Local DNA
+              Preview fingerprint
             </button>
             <button class="ghost-button" type="button" data-action="run-local-scan">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 12h4l3-7 4 14 3-7h2" />
               </svg>
-              Run Local Scan
+              Run comparison
             </button>
             <button class="ghost-button" type="button" data-action="run-url-candidate-scan">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M10 13a5 5 0 0 0 7.54.54l2-2a5 5 0 0 0-7.07-7.07l-1.14 1.14" />
                 <path d="M14 11a5 5 0 0 0-7.54-.54l-2 2a5 5 0 0 0 7.07 7.07l1.14-1.14" />
               </svg>
-              Verify URL Candidates
+              Verify public link
             </button>
             <button class="ghost-button" type="button" data-action="search-internet-for-work">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -258,7 +305,7 @@
                 <path d="M12 3a15 15 0 0 0 0 18" />
                 <path d="M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0" />
               </svg>
-              Search Internet For This Work
+              Search public web
             </button>
           </div>
 
@@ -282,12 +329,12 @@
             </article>
           </div>
 
-          <div class="local-results-grid">
+          <div class="local-results-grid" id="results">
             <article class="local-results-panel">
               <div class="panel-heading tight">
                 <div>
-                  <p class="eyebrow">Local Results</p>
-                  <h3>Computed suspected matches</h3>
+                  <p class="eyebrow">Compared videos</p>
+                  <h3>Results</h3>
                 </div>
               </div>
               <div class="local-results-list" id="local-results-list">
@@ -298,7 +345,7 @@
             <article class="local-results-panel">
               <div class="panel-heading tight">
                 <div>
-                  <p class="eyebrow">Measured Case</p>
+                  <p class="eyebrow">Selected result</p>
                   <h3 id="local-case-title">No candidate selected</h3>
                 </div>
                 <span class="status-pill" id="local-case-decision">Idle</span>
@@ -391,8 +438,8 @@
         <section class="panel web-discovery-panel" id="discovery" aria-label="Live web discovery connector">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Live Web Discovery</p>
-              <h3>Public source connector</h3>
+              <p class="eyebrow">Optional public-page check</p>
+              <h3>Check a public page for video links</h3>
             </div>
             <span class="status-pill" id="web-discovery-status">Waiting</span>
           </div>
@@ -400,15 +447,15 @@
           <div class="web-discovery-grid">
             <div class="discovery-form-card">
               <label class="form-field" for="web-title-input">
-                <span class="label">Protected title</span>
-                <input id="web-title-input" type="text" value="Project Monsoon" autocomplete="off" />
+                <span class="label">Video title</span>
+                <input id="web-title-input" type="text" value="" autocomplete="off" placeholder="Example: My short film" />
               </label>
               <label class="form-field" for="web-alias-input">
-                <span class="label">Aliases</span>
-                <input id="web-alias-input" type="text" value="Monsoon, Project X" autocomplete="off" />
+                <span class="label">Other names</span>
+                <input id="web-alias-input" type="text" value="" autocomplete="off" placeholder="Optional alternate title" />
               </label>
               <label class="form-field" for="authorized-domain-input">
-                <span class="label">Authorized domains</span>
+                <span class="label">Domains to exclude</span>
                 <textarea id="authorized-domain-input" rows="4" spellcheck="false">netflix.com
 primevideo.com
 hotstar.com
@@ -418,8 +465,8 @@ zee5.com
 youtube.com</textarea>
               </label>
               <label class="form-field" for="source-domain-input">
-                <span class="label">Source focus domains</span>
-                <textarea id="source-domain-input" rows="3" spellcheck="false" placeholder="Optional: public source domains to focus the search index"></textarea>
+                <span class="label">Optional site focus</span>
+                <textarea id="source-domain-input" rows="3" spellcheck="false" placeholder="Optional domain to focus the search"></textarea>
               </label>
               <div class="discovery-options-grid">
                 <label class="form-field" for="discovery-provider-input">
@@ -427,8 +474,8 @@ youtube.com</textarea>
                   <input id="discovery-provider-input" type="text" value="brave, bing, google, commoncrawl" autocomplete="off" />
                 </label>
                 <label class="form-field" for="risk-term-input">
-                  <span class="label">Risk ecosystem terms</span>
-                  <input id="risk-term-input" type="text" value="movierulz, netmirror, ibomma, tamilrockers, filmyzilla, 9xmovies, telegram, torrent" autocomplete="off" />
+                  <span class="label">Extra search terms</span>
+                  <input id="risk-term-input" type="text" value="" autocomplete="off" placeholder="Optional" />
                 </label>
                 <label class="form-field" for="expand-depth-input">
                   <span class="label">Expansion depth</span>
@@ -444,12 +491,12 @@ youtube.com</textarea>
                 </label>
               </div>
               <label class="form-field" for="web-seed-input">
-                <span class="label">Seed URLs</span>
-                <textarea id="web-seed-input" rows="5" spellcheck="false" placeholder="https://public-source.example/page"></textarea>
+                <span class="label">Public page URL</span>
+                <textarea id="web-seed-input" rows="3" spellcheck="false" placeholder="https://example.com/watch/my-video"></textarea>
               </label>
               <label class="form-field" for="partner-source-input">
-                <span class="label">Partner/source feed</span>
-                <textarea id="partner-source-input" rows="4" spellcheck="false" placeholder='Public URLs from rights-holder feeds, partner reports, or JSON [{"url":"https://source.example/page"}]'></textarea>
+                <span class="label">Extra public URLs</span>
+                <textarea id="partner-source-input" rows="3" spellcheck="false" placeholder="Optional public URLs"></textarea>
               </label>
               <div class="scanner-actions">
                 <button class="primary-button" type="button" data-action="run-web-search">
@@ -457,13 +504,13 @@ youtube.com</textarea>
                     <path d="M11 19a8 8 0 1 1 5.66-2.34L21 21" />
                     <path d="M8 11h6" />
                   </svg>
-                  Search Web Index
+                  Search public web
                 </button>
                 <button class="primary-button" type="button" data-action="run-web-discovery">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M11 19a8 8 0 1 1 5.66-2.34L21 21m-6-10h-4m2-2v4" />
                   </svg>
-                  Scan Public Sources
+                  Check page
                 </button>
                 <button class="ghost-button" type="button" data-action="toggle-web-monitor" id="web-monitor-button">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -471,7 +518,7 @@ youtube.com</textarea>
                     <path d="M21 12a9 9 0 1 1-3-6.7" />
                     <path d="M21 3v6h-6" />
                   </svg>
-                  <span>Start Monitor</span>
+                  <span>Check again later</span>
                 </button>
               </div>
             </div>
@@ -637,8 +684,6 @@ youtube.com</textarea>
       </main>
     </div>
 
-    <script src="./data/benchmark-results.js"></script>
-    <script src="./data/real-media-results.js"></script>
-    <script src="./app.js?v=20260905-blind-discovery"></script>
+    <script src="./clean-app.js?v=20261123-7"></script>
   </body>
 </html>

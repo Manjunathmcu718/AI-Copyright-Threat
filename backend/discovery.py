@@ -25,6 +25,7 @@ COMMON_CRAWL_COLLINFO_ENDPOINT = "https://index.commoncrawl.org/collinfo.json"
 SEARCH_RESULT_LIMIT = 20
 MAX_EXPANSION_PAGES = 32
 COMMON_CRAWL_QUERY_LIMIT = 1
+PUBLIC_SITEMAP_PAGE_LIMIT = 8
 _COMMON_CRAWL_COLLECTION_CACHE: List[Dict[str, str]] = []
 TRACKING_QUERY_PARAMS = {
     "fbclid",
@@ -367,12 +368,12 @@ def describe_media_reference(url: str, kind: str) -> Dict[str, str]:
 
 def collect_media_references(parser: PageParser, base_url: str) -> List[Dict[str, str]]:
     references: List[Dict[str, str]] = []
-    seen: set[tuple[str, str, str]] = set()
+    seen: set[tuple[str, str]] = set()
 
     for reference in parser.media_references:
         absolute_url = urljoin(base_url, reference["url"])
         described = describe_media_reference(absolute_url, reference["kind"])
-        key = (described["kind"], described["host"], described["type"])
+        key = (described["kind"], described["url"])
         if key not in seen:
             seen.add(key)
             references.append(described)
@@ -383,7 +384,7 @@ def collect_media_references(parser: PageParser, base_url: str) -> List[Dict[str
         if not is_media_reference_url(absolute_url):
             continue
         described = describe_media_reference(absolute_url, "link")
-        key = (described["kind"], described["host"], described["type"])
+        key = (described["kind"], described["url"])
         if key not in seen:
             seen.add(key)
             references.append(described)
@@ -1043,6 +1044,8 @@ def unique_url(url: str) -> str:
 def normalize_provider_names(providers: Optional[Iterable[str]]) -> List[str]:
     allowed = ["brave", "bing", "google", "commoncrawl"]
     names = [collapse_space(str(provider)).lower() for provider in providers or []]
+    if "seed" in names:
+        return []
     selected = [provider for provider in names if provider in allowed]
     if not selected:
         selected = allowed
@@ -1184,6 +1187,63 @@ def parse_page(fetch: FetchResult) -> PageParser:
     return parser
 
 
+def public_root_url(domain: str) -> str:
+    host = normalize_domain(domain)
+    return f"https://{host}/" if host else ""
+
+
+def sitemap_page_urls(
+    seed_urls: Iterable[str],
+    fetcher: Callable[[str], FetchResult],
+    validate_urls: bool,
+    limit: int,
+) -> List[str]:
+    """Return public same-host pages listed by a root site's sitemap."""
+    pages: List[str] = []
+    seen: set[str] = set()
+
+    for seed in seed_urls:
+        parsed_seed = urlparse(seed)
+        host = normalize_domain(parsed_seed.hostname or "")
+        if not host or parsed_seed.path not in {"", "/"}:
+            continue
+
+        sitemap_url = urlunparse((parsed_seed.scheme or "https", parsed_seed.netloc, "/sitemap.xml", "", "", ""))
+        if validate_urls:
+            ok, _ = is_public_http_url(sitemap_url)
+            if not ok:
+                continue
+
+        try:
+            fetched = fetcher(sitemap_url)
+        except Exception:  # noqa: BLE001 - a sitemap is optional public metadata.
+            continue
+
+        document = fetched.text or ""
+        if "<urlset" not in document.lower():
+            continue
+
+        for raw_location in re.findall(r"<loc(?:\s[^>]*)?>(.*?)</loc>", document, flags=re.IGNORECASE | re.DOTALL):
+            location = collapse_space(re.sub(r"<!\[CDATA\[(.*?)\]\]>", r"\1", raw_location, flags=re.DOTALL))
+            page_url = unique_url(urljoin(fetched.final_url, html.unescape(location)))
+            parsed_page = urlparse(page_url)
+            if (
+                parsed_page.scheme not in {"http", "https"}
+                or not parsed_page.netloc
+                or not domain_matches(parsed_page.hostname or "", {host})
+                or is_media_reference_url(page_url)
+                or page_url in seen
+            ):
+                continue
+
+            seen.add(page_url)
+            pages.append(page_url)
+            if len(pages) >= limit:
+                return pages
+
+    return pages
+
+
 def scan_public_sources(
     title: str,
     aliases: Optional[Iterable[str]],
@@ -1200,8 +1260,15 @@ def scan_public_sources(
 
     alias_list = [collapse_space(alias) for alias in aliases or [] if collapse_space(alias)]
     query_tokens = tokenize(protected_title, *alias_list)
-    seeds = [normalize_seed_url(url) for url in seed_urls if normalize_seed_url(url)]
-    seeds = seeds[: max(1, min(int(max_pages or 6), 10))]
+    maximum_pages = max(1, min(int(max_pages or 6), 10))
+    supplied_seeds = [normalize_seed_url(url) for url in seed_urls if normalize_seed_url(url)]
+    sitemap_pages = sitemap_page_urls(
+        supplied_seeds,
+        fetcher=fetcher,
+        validate_urls=validate_urls,
+        limit=min(PUBLIC_SITEMAP_PAGE_LIMIT, maximum_pages),
+    )
+    seeds = list(dict.fromkeys([*supplied_seeds, *sitemap_pages]))[:maximum_pages]
     authorized_set = normalize_domains(authorized_domains)
 
     sources: List[Dict[str, object]] = []
@@ -1224,6 +1291,7 @@ def scan_public_sources(
             "error": "",
             "linksFound": 0,
             "mediaReferences": 0,
+            "mediaReferenceDetails": [],
             "sourceClass": initial_class,
             "authorized": initial_class == "AUTHORIZED",
             "skipped": False,
@@ -1263,6 +1331,7 @@ def scan_public_sources(
                     "title": source_title,
                     "linksFound": len(parser.anchors),
                     "mediaReferences": len(media_references),
+                    "mediaReferenceDetails": media_references,
                     "fetchMs": fetch_ms,
                 }
             )
@@ -1390,6 +1459,7 @@ def scan_public_sources(
         "query": protected_title,
         "aliases": alias_list,
         "seedCount": len(seeds),
+        "sitemapPagesDiscovered": len(sitemap_pages),
         "sourcesScanned": sources,
         "candidateCount": len(candidates),
         "candidates": candidates,
@@ -1415,6 +1485,7 @@ def scan_public_sources(
 def search_public_web(
     title: str,
     aliases: Optional[Iterable[str]] = None,
+    seed_urls: Optional[Iterable[str]] = None,
     authorized_domains: Optional[Iterable[str]] = None,
     source_domains: Optional[Iterable[str]] = None,
     risk_terms: Optional[Iterable[str]] = None,
@@ -1478,7 +1549,21 @@ def search_public_web(
                     }
                 )
 
-    if not provider_entries:
+    focused_seed_urls = [
+        normalize_seed_url(url)
+        for url in seed_urls or []
+        if normalize_seed_url(url)
+    ]
+    focused_seed_urls.extend(
+        [
+        public_root_url(domain)
+        for domain in source_focus
+        if not domain_matches(domain, authorized_set)
+        ]
+    )
+    focused_seed_urls = list(dict.fromkeys(url for url in focused_seed_urls if url))
+
+    if not provider_entries and not focused_seed_urls:
         coverage = build_coverage_report(
             provider_names=requested_providers,
             provider_results=provider_results,
@@ -1623,7 +1708,7 @@ def search_public_web(
 
     search_candidates: List[Dict[str, object]] = []
     excluded_search_candidates: List[Dict[str, object]] = []
-    deep_scan_urls: List[str] = []
+    deep_scan_urls: List[str] = list(dict.fromkeys(focused_seed_urls))
 
     for result in deduped_results[: max(1, min(int(max_results or 12), 36))]:
         parsed = urlparse(result["url"])
@@ -1652,7 +1737,8 @@ def search_public_web(
                 ),
             )
         if not domain_matches(host, authorized_set):
-            deep_scan_urls.append(result["url"])
+            if result["url"] not in deep_scan_urls:
+                deep_scan_urls.append(result["url"])
 
     deep_limit = max(0, min(int(deep_scan_pages or 0), 10))
     scanned = scan_public_sources(

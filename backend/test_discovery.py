@@ -90,6 +90,7 @@ def test_public_source_scan_detects_media_reference_without_downloading():
 
     assert result["candidateCount"] >= 1
     assert result["mediaReferenceCount"] >= 1
+    assert result["sourcesScanned"][0]["mediaReferenceDetails"][0]["url"].endswith("project-monsoon-preview.m3u8")
     assert result["candidates"][0]["evidenceLevel"] == 2
     assert result["candidates"][0]["mediaEvidenceScore"] > 0
     assert result["candidates"][0]["contentMatchScore"] is None
@@ -448,3 +449,44 @@ def test_public_search_expands_from_relevant_public_links():
     assert result["coverage"]["domainsEvaluated"] == 2
     assert result["coverage"]["expansionQueued"] >= 1
     assert any(source["host"] == "second.example" for source in result["sourcesScanned"])
+
+
+def test_public_search_scans_supplied_site_sitemap_for_direct_media():
+    pages = {
+        "https://public.example/": "<html><title>Public video site</title></html>",
+        "https://public.example/sitemap.xml": """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <urlset><url><loc>https://public.example/watch/my-owned-film</loc></url></urlset>
+        """,
+        "https://public.example/watch/my-owned-film": """
+            <html>
+              <head><title>My Owned Film - Watch</title></head>
+              <body><video src="/media/my-owned-film-test-copy.mp4"></video></body>
+            </html>
+        """,
+    }
+
+    def fake_fetcher(url: str) -> FetchResult:
+        return FetchResult(url=url, final_url=url, status=200, content_type="text/html", text=pages[url])
+
+    result = search_public_web(
+        title="My Owned Film",
+        aliases=[],
+        seed_urls=["https://public.example/"],
+        authorized_domains=[],
+        source_domains=["public.example"],
+        max_results=1,
+        deep_scan_pages=3,
+        expand_depth=0,
+        providers=["seed"],
+        fetcher=fake_fetcher,
+        validate_urls=False,
+    )
+
+    assert result["coverage"]["pagesEvaluated"] >= 2
+    assert result["mediaReferenceCount"] >= 1
+    assert any(
+        reference["url"] == "https://public.example/media/my-owned-film-test-copy.mp4"
+        for candidate in result["candidates"]
+        for reference in candidate["mediaReferences"]
+    )
