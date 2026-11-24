@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b0f18" />
     <title>CineShield | Video copy verification</title>
-    <link rel="stylesheet" href="./clean-styles.css?v=20261124-6" />
+    <link rel="stylesheet" href="./clean-styles.css?v=20261125-1" />
   </head>
   <body class="clean-ui">
     <div class="verification-desk" id="desk-top">
       <header class="desk-header">
         <a class="desk-brand" href="#desk-top" aria-label="CineShield home"><img src="./assets/cineshield-mark.svg" alt="" /><span>CineShield</span></a>
-        <nav class="desk-nav" aria-label="Main navigation"><a href="#desk-verify">Verify</a><a href="#desk-results">Results</a><a href="#desk-source-check">Web discovery</a><a href="#desk-history">History</a></nav>
+        <nav class="desk-nav" aria-label="Main navigation"><a href="#desk-verify">Video upload</a><a href="#desk-original-link-search">Original link</a><a href="#desk-results">Results</a><a href="#desk-source-check">Web discovery</a><a href="#desk-history">History</a></nav>
         <div class="desk-header-actions"><button class="desk-text-button" id="desk-open-source" type="button" title="Inspect a public page you are permitted to review">Check a public link</button><button class="desk-header-cta" id="desk-start" type="button">New check <span aria-hidden="true">↘</span></button></div>
       </header>
 
@@ -65,12 +65,30 @@
           <div class="desk-results-layout" id="desk-results-layout" hidden><aside class="desk-candidate-aside"><p>Compared candidates</p><div id="desk-candidate-list"></div></aside><article id="desk-selected-result" aria-live="polite"></article></div>
         </section>
 
+        <section class="desk-wrap desk-source desk-original-search" id="desk-original-link-search" aria-labelledby="desk-original-link-title">
+          <div class="desk-source-content">
+            <div class="desk-discovery-topline"><div><p class="desk-eyebrow">Original link search</p><h2 id="desk-original-link-title">Find public leads from an original page.</h2><p>Paste the original movie's public page link. CineShield searches for related public pages; results are leads until video evidence is verified.</p></div></div>
+            <div class="desk-source-fields"><label class="desk-field" for="desk-original-url"><span>Original movie page link</span><input id="desk-original-url" type="url" placeholder="https://example.com/title/movie" /></label></div>
+            <div class="desk-source-fields"><label class="desk-field" for="desk-original-title"><span>Movie title <i>Optional, recommended for protected pages</i></span><input id="desk-original-title" type="text" placeholder="Example: Salaar" /></label></div>
+            <div class="desk-source-actions"><button class="desk-discovery-run" id="desk-search-original-link" type="button"><span><strong>Search for public leads</strong><small>No video upload required</small></span><b aria-hidden="true">→</b></button></div>
+            <div class="desk-source-feedback" id="desk-original-link-feedback" aria-live="polite">Enter an original page link to start.</div>
+            <div id="desk-original-link-results" class="desk-original-link-results" aria-live="polite"></div>
+          </div>
+        </section>
+
         <details class="desk-wrap desk-source" id="desk-source-check">
           <summary><span><strong>Web discovery</strong><small>Find and verify matching public-video evidence.</small></span><b aria-hidden="true">+</b></summary>
           <div class="desk-source-content">
             <div class="desk-discovery-topline"><div><p class="desk-eyebrow">Section 03 — Public web discovery</p><p>Upload your original above, confirm authorization, then let CineShield search accessible public video evidence for a Content DNA match.</p></div><span class="desk-discovery-state" id="desk-discovery-state"><i aria-hidden="true"></i>Ready to check</span></div>
             <ol class="desk-discovery-steps" aria-label="Web discovery steps"><li><span>01</span><strong>Original video</strong><small>Use the protected video you selected.</small></li><li><span>02</span><strong>Permission</strong><small>Confirm you can verify public evidence.</small></li><li><span>03</span><strong>Source check</strong><small>Match discovered media against Content DNA.</small></li></ol>
             <div class="desk-source-fields"><label class="desk-field"><span>Video title <i>Optional</i></span><input id="desk-source-title" type="text" placeholder="Uses the uploaded video name if blank" /></label></div>
+            <section class="desk-live-link-panel" aria-labelledby="desk-live-link-title">
+              <div class="desk-live-link-heading"><div><p class="desk-eyebrow">Public link check</p><h3 id="desk-live-link-title">Paste a public video or watch-page link.</h3><p>When public video media is exposed by the link, CineShield runs the same visual, scene, timing, duration, and coverage checks used for uploaded candidates.</p></div><span>Optional</span></div>
+              <label class="desk-field" for="desk-live-link-url"><span>Public page or direct video link</span><input id="desk-live-link-url" type="url" inputmode="url" placeholder="https://example.com/watch/video or https://example.com/video.mp4" /></label>
+              <label class="desk-check desk-live-link-consent"><input id="desk-live-link-authorized" type="checkbox" /><span><strong>I am authorized to verify media exposed by this public link.</strong><small>Login-only pages, DRM streams, paywalls, CAPTCHAs, and hidden players are not accessed.</small></span></label>
+              <div class="desk-source-actions"><button class="desk-discovery-run desk-live-link-run" id="desk-verify-live-link" type="button"><span><strong>Check public link</strong><small>Verify exposed video with Content DNA</small></span><b aria-hidden="true">→</b></button></div>
+              <div class="desk-source-feedback desk-live-link-feedback" id="desk-live-link-feedback" aria-live="polite">Add the original video, paste one public link, confirm authorization, then run the check.</div>
+            </section>
             <label class="desk-check desk-discovery-consent"><input id="desk-url-authorized" type="checkbox" /><span><strong>I am authorized to run this check.</strong><small>CineShield will compare only public video evidence found during this controlled test.</small></span></label>
             <div class="desk-source-actions"><button class="desk-discovery-run" id="desk-inspect-source" type="button"><span><strong>Run Web Discovery</strong><small>Find and verify a public copy</small></span><b aria-hidden="true">→</b></button></div>
             <div class="desk-source-feedback" id="desk-source-feedback" aria-live="polite">Select the original video, confirm authorization, then run the check.</div>
@@ -701,6 +719,6 @@ youtube.com</textarea>
       </main>
     </div>
 
-    <script src="./clean-app.js?v=20261124-16"></script>
+    <script src="./clean-app.js?v=20261125-1"></script>
   </body>
 </html>

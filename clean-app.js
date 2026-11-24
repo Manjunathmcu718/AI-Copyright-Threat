@@ -60,7 +60,9 @@ function deskRenderHistory() {
     const candidateNames = Array.isArray(entry.candidates) ? entry.candidates.filter(Boolean) : [];
     const candidateText = candidateNames.length
       ? `Candidate${candidateNames.length === 1 ? "" : "s"}: ${candidateNames.join(", ")}`
-      : entry.operation === "Web discovery" ? "Public discovery using the uploaded original" : "No candidate filename retained";
+      : ["Web discovery", "Public link check"].includes(entry.operation)
+        ? "Public-media check using the uploaded original"
+        : "No candidate filename retained";
     const sourceLinks = sources.map((source, index) => {
       const pageUrl = String(source?.pageUrl || "");
       const mediaUrl = String(source?.mediaUrl || "");
@@ -209,6 +211,8 @@ function deskSetBusy(busy) {
   desk("#desk-run-scan").disabled = busy || !deskCanScan();
   desk("#desk-clear").disabled = busy || !(deskState.protectedFile || deskState.candidateFiles.length);
   desk("#desk-inspect-source").disabled = busy;
+  desk("#desk-search-original-link")?.toggleAttribute("disabled", busy);
+  desk("#desk-verify-live-link")?.toggleAttribute("disabled", busy);
   if (desk("#desk-verify-url")) desk("#desk-verify-url").disabled = busy;
   desk("#desk-create-copy").disabled = busy || !deskState.protectedFile;
 }
@@ -406,6 +410,75 @@ function deskSetSourceFeedback(html) {
   desk("#desk-source-feedback").innerHTML = html;
 }
 
+function deskSetLiveLinkFeedback(html) {
+  const feedback = desk("#desk-live-link-feedback");
+  if (feedback) feedback.innerHTML = html;
+}
+
+async function deskSearchOriginalLink() {
+  const url = desk("#desk-original-url").value.trim();
+  const title = desk("#desk-original-title").value.trim();
+  const feedback = desk("#desk-original-link-feedback");
+  const results = desk("#desk-original-link-results");
+  if (!url) {
+    feedback.textContent = "Enter the original movie's public page link.";
+    return;
+  }
+  deskSetBusy(true);
+  results.replaceChildren();
+  feedback.textContent = "Reading public page information and searching the web index…";
+  deskSetActivity("Searching from the original link", "Looking for related public pages using the movie title.", "working");
+  try {
+    const response = await fetch(`${DESK_API}/api/discovery/original-link`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ originalUrl: url, title })
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "The search could not be completed.");
+    const discovery = payload.discovery || {};
+    const candidates = Array.isArray(discovery.candidates) ? discovery.candidates : [];
+    if (discovery.setupRequired || discovery.providerStatus === "missing_key") {
+      feedback.textContent = "Search provider setup is required. Configure the Brave Search API key on the backend.";
+    } else if (!candidates.length) {
+      const errors = Array.isArray(discovery.searchErrors) ? discovery.searchErrors : [];
+      feedback.textContent = errors.length
+        ? "The search provider reported an error. Check the backend provider configuration and try again."
+        : `No candidate leads were returned for “${payload.title}” in this search.`;
+    } else {
+      feedback.textContent = `Found ${candidates.length} public lead${candidates.length === 1 ? "" : "s"} for “${payload.title}”. These are not verified copies or proof of piracy.`;
+      for (const candidate of candidates) {
+        let safeUrl;
+        try { safeUrl = new URL(candidate.url); } catch { continue; }
+        if (!["http:", "https:"].includes(safeUrl.protocol)) continue;
+        const item = document.createElement("article");
+        item.className = "desk-original-lead";
+        const anchor = document.createElement("a");
+        anchor.href = safeUrl.href;
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        anchor.textContent = candidate.title || safeUrl.hostname;
+        const detail = document.createElement("p");
+        detail.textContent = `${safeUrl.hostname} · ${candidate.riskLevel || "Review lead"} · Content DNA not verified`;
+        const address = document.createElement("small");
+        address.textContent = safeUrl.href;
+        item.append(anchor, detail, address);
+        results.append(item);
+      }
+    }
+    if (!payload.originalPageAccessible) {
+      const note = document.createElement("p");
+      note.textContent = "The original page could not be read; this search used the title you provided.";
+      results.prepend(note);
+    }
+    deskSetActivity("Original link search complete", "Review the public leads and verify candidate video evidence separately.");
+  } catch (error) {
+    feedback.textContent = error.message || "The search could not be completed.";
+    deskSetActivity("Original link search failed", feedback.textContent, "error");
+  } finally {
+    deskSetBusy(false);
+  }
+}
+
 function deskSetDiscoveryState(label, tone = "ready") {
   const state = desk("#desk-discovery-state");
   if (!state) return;
@@ -544,52 +617,103 @@ async function deskInspectSource() {
   }
 }
 
-async function deskVerifyPublicUrl() {
-  const url = desk("#desk-direct-media-url").value.trim() || desk("#desk-source-url").value.trim();
+async function deskVerifyLiveLink() {
+  const url = desk("#desk-live-link-url")?.value.trim() || "";
+  const authorized = Boolean(desk("#desk-live-link-authorized")?.checked);
+  const title = deskSourceTitle();
   if (!deskState.protectedFile) {
-    deskSetSourceFeedback("<strong>Select the original video before verifying a public direct video URL.</strong>");
+    deskSetLiveLinkFeedback("<strong>Select the original video before checking a public link.</strong>");
     return;
   }
-  if (!url || !desk("#desk-url-authorized").checked) {
-    deskSetSourceFeedback("<strong>Enter a direct public video URL and confirm authorization.</strong>");
+  if (!url) {
+    deskSetLiveLinkFeedback("<strong>Paste one public watch-page or direct video-file link.</strong>");
     return;
   }
+  if (!authorized) {
+    deskSetLiveLinkFeedback("<strong>Confirm that you are authorized to verify this public media.</strong>");
+    return;
+  }
+
+  const button = desk("#desk-verify-live-link");
+  const buttonLabel = button.querySelector("strong");
+  buttonLabel.textContent = "Checking public link…";
   deskSetBusy(true);
   deskSetProgress(1);
   deskSetStatus("Verifying");
-  deskSetActivity("Verifying the public video", "Downloading the authorized direct file and comparing its Content DNA.", "working");
+  deskSetDiscoveryState("Checking public link", "working");
+  deskSetActivity("Checking a public link", "Extracting exposed video evidence and comparing its Content DNA.", "working");
+  deskSetLiveLinkFeedback("Checking publicly exposed video media…");
+
   try {
     const formData = new FormData();
     formData.append("protected", deskState.protectedFile);
-    formData.append("request", JSON.stringify({ candidateUrls: [url], authorizationConfirmed: true }));
-    const response = await fetch(`${DESK_API}/api/scan/url-candidates`, { method: "POST", body: formData });
+    formData.append("public_url", url);
+    formData.append("title", title);
+    formData.append("authorization_confirmed", "true");
+    const response = await fetch(`${DESK_API}/api/discovery/verify-link`, { method: "POST", body: formData });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "The direct video could not be verified.");
-    deskState.results = (Array.isArray(payload.results) ? payload.results : []).map((result) => ({ ...result, sourcePage: url }));
+    if (!response.ok) throw new Error(payload.detail || "The public link could not be checked.");
+
+    const checkedMedia = Math.max(0, Number(payload.checkedMedia || 0));
+    const matchedMedia = Math.max(0, Number(payload.matchedMedia || 0));
+    const hasPublicEvidence = Boolean(payload.foundEvidence ?? payload.foundMatch);
+    if (!hasPublicEvidence || !payload.result) {
+      deskState.results = [];
+      deskState.investigation = null;
+      deskState.publicSource = null;
+      deskState.resultNotice = {
+        title: "No matching public copy found.",
+        detail: "CineShield did not find Content DNA evidence linking the accessible public media to this original."
+      };
+      deskRecordHistory({
+        operation: "Public link check",
+        workTitle: title,
+        original: deskState.protectedFile?.name || "Unnamed original",
+        decision: "No match",
+        confidence: 0
+      });
+      deskRenderResults();
+      deskSetProgress(0);
+      deskSetStatus("No match", "review");
+      deskSetDiscoveryState("No matching public copy", "review");
+      deskSetLiveLinkFeedback(`<strong>Public link check complete.</strong><br>No matching public copy was found through public discovery${checkedMedia ? ` after checking ${checkedMedia} accessible video${checkedMedia === 1 ? "" : "s"}` : ""}.`);
+      deskSetActivity("No matching public copy found", "No accessible public video met the Content DNA evidence threshold.", "error");
+      return;
+    }
+
+    const result = payload.result;
+    deskState.results = [result];
     deskState.investigation = payload.investigation || null;
-    deskState.publicSource = { pageUrl: url, host: "" };
+    deskState.resultNotice = null;
+    deskState.publicSource = { pageUrl: result.sourcePage || url, host: result.sourceHost || "" };
     deskState.selectedIndex = 0;
-    const directTopResult = deskState.results[0] || {};
     deskRecordHistory({
-      operation: "Direct URL check",
-      workTitle: deskSourceTitle(),
+      operation: "Public link check",
+      workTitle: title,
       original: deskState.protectedFile?.name || "Unnamed original",
-      decision: directTopResult.decision || "No result",
-      confidence: Number(directTopResult.confidence || 0),
-      sources: [{ pageUrl: url, mediaUrl: directTopResult.sourceMediaUrl || directTopResult.sourceUrl || url }]
+      decision: result.decision || "Match",
+      confidence: Number(result.confidence || 0),
+      sources: Array.isArray(payload.matchedSources) ? payload.matchedSources : []
     });
     deskRenderResults();
     deskSetProgress(2);
-    const top = deskState.results[0];
-    deskSetStatus(top?.decision || "Complete", deskDecisionTone(top?.decision));
-    deskSetActivity("Direct video verification complete", deskState.investigation?.summary || "Review the result below.");
+    const partialEvidence = result.decision === "Review";
+    deskSetStatus(result.decision || "Complete", deskDecisionTone(result.decision));
+    deskSetDiscoveryState(partialEvidence ? "Partial public copy found" : "Matching public video found", partialEvidence ? "review" : "match");
+    const evidenceLabel = partialEvidence
+      ? `${matchedMedia} public video${matchedMedia === 1 ? "" : "s"} with partial-copy evidence`
+      : `${matchedMedia} matching public video${matchedMedia === 1 ? "" : "s"}`;
+    deskSetLiveLinkFeedback(`<strong>Public link check found ${deskEscape(evidenceLabel)}.</strong><ul><li>Accessible videos checked: ${checkedMedia}</li><li>Decision: ${deskEscape(result.decision || "No result")} (${Number(result.confidence || 0).toFixed(1)}%)</li><li>Verified location: <a href="${deskEscape(result.sourcePage || url)}" target="_blank" rel="noreferrer">${deskEscape(result.sourcePage || url)}</a></li></ul>`);
+    deskSetActivity(partialEvidence ? "Partial public copy found" : "Public copy found", `${evidenceLabel} verified by the same Content DNA checks as a local comparison.`);
     desk("#desk-results").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     deskSetStatus("Could not verify", "error");
     deskSetProgress(0);
-    deskSetActivity("Public video verification failed", error.message || "Use a direct public video-file URL.", "error");
-    deskSetSourceFeedback(`<strong>Verification failed.</strong><br>${deskEscape(error.message || "Use a direct public video-file URL.")}`);
+    deskSetDiscoveryState("Check could not finish", "error");
+    deskSetLiveLinkFeedback(`<strong>Could not check this public link.</strong><br>${deskEscape(error.message || "Use a reachable public page with exposed video media.")}`);
+    deskSetActivity("Public link verification failed", error.message || "Use a reachable public page with exposed video media.", "error");
   } finally {
+    buttonLabel.textContent = "Check public link";
     deskSetBusy(false);
   }
 }
@@ -660,11 +784,13 @@ function deskBindEvents() {
     deskNotify("Local history cleared.");
   });
   desk("#desk-inspect-source").addEventListener("click", deskInspectSource);
-  desk("#desk-verify-url")?.addEventListener("click", deskVerifyPublicUrl);
+  desk("#desk-search-original-link").addEventListener("click", deskSearchOriginalLink);
+  desk("#desk-verify-live-link")?.addEventListener("click", deskVerifyLiveLink);
   desk("#desk-open-source").addEventListener("click", () => {
     const sourceCheck = desk("#desk-source-check");
     sourceCheck.open = true;
     sourceCheck.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => desk("#desk-live-link-url")?.focus(), 360);
   });
   document.querySelectorAll('a[href="#desk-source-check"]').forEach((link) => {
     link.addEventListener("click", (event) => {

@@ -7,13 +7,14 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Dict, List
+from urllib.parse import urlparse
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from backend.discovery import scan_public_sources, search_public_web
+from backend.discovery import is_public_http_url, scan_public_sources, search_public_web
 from backend.demo_copy import create_controlled_copy
 from backend.investigator import build_investigation
 from backend.media_scan import scan_folder
@@ -21,6 +22,7 @@ from backend.url_media import (
     download_direct_media_candidate,
     normalize_candidate_urls,
     url_verification_boundary,
+    validate_direct_media_url,
 )
 
 
@@ -92,6 +94,11 @@ class DiscoverySearchRequest(BaseModel):
     perDomainPageLimit: int = 4
     country: str = "IN"
     searchLang: str = "en"
+
+
+class OriginalLinkSearchRequest(BaseModel):
+    originalUrl: str
+    title: str = ""
 
 
 def inferred_work_title(value: str) -> str:
@@ -226,6 +233,49 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.post("/api/discovery/original-link")
+def search_from_original_link(request: OriginalLinkSearchRequest) -> dict:
+    """Search indexed pages using a public original page's title or a supplied title."""
+    original_url = request.originalUrl.strip()
+    allowed, reason = is_public_http_url(original_url)
+    if not allowed:
+        raise HTTPException(status_code=400, detail=reason)
+
+    # Metadata access can fail for subscription sites; a user-supplied title is
+    # a legitimate fallback, but never implies access to the underlying video.
+    page = scan_public_sources(title="original", aliases=[], seed_urls=[original_url], max_pages=1)
+    sources = page.get("sourcesScanned", [])
+    source = sources[0] if sources else {}
+    page_title = str(source.get("title") or "").strip() if source.get("ok") else ""
+    explicit_title = request.title.strip()
+    title = explicit_title or re.split(r"\s+[|–—]\s+", page_title, maxsplit=1)[0].strip()
+    if not title or title.lower() in {"netflix", "watch netflix", (urlparse(original_url).hostname or "").lower()}:
+        raise HTTPException(status_code=400, detail="Could not read a usable title from the original page. Enter the movie title and try again.")
+
+    original_host = urlparse(original_url).hostname or ""
+    discovery = search_public_web(
+        title=title,
+        aliases=[],
+        seed_urls=[],
+        authorized_domains=[original_host],
+        providers=["brave"],
+        query_limit=6,
+        max_results=12,
+        deep_scan_pages=4,
+        expand_depth=0,
+        expand_pages=0,
+    )
+    return {
+        "originalUrl": original_url,
+        "originalPageAccessible": bool(source.get("ok")),
+        "originalPageError": str(source.get("error") or ""),
+        "title": title,
+        "titleSource": "provided" if explicit_title else "page metadata",
+        "discovery": discovery,
+        "verificationStatus": "UNVERIFIED_METADATA_LEADS",
+    }
+
+
 @app.post("/api/content/register")
 async def register_content(file: UploadFile = File(...)) -> dict:
     destination = PROTECTED_DIR / file.filename
@@ -333,41 +383,27 @@ async def scan_url_candidates(protected: UploadFile = File(...), request: str = 
     }
 
 
-@app.post("/api/discovery/verify")
-async def discover_public_copy(
-    protected: UploadFile = File(...),
-    authorization_confirmed: bool = Form(False),
-    title: str = Form(""),
-) -> dict:
-    """Discover public direct media and verify it against an authorized original."""
-    if not authorization_confirmed:
-        raise HTTPException(
-            status_code=400,
-            detail="Public media verification requires authorization confirmation.",
-        )
-    if not protected.filename:
-        raise HTTPException(status_code=400, detail="Protected video file is required.")
-    protected_path = PROTECTED_DIR / f"{uuid4().hex}_{Path(protected.filename).name}"
-    with protected_path.open("wb") as handle:
-        while chunk := await protected.read(65536):
-            handle.write(chunk)
+def save_protected_upload(protected: UploadFile) -> Path:
+    """Return a unique path reserved for an uploaded protected video."""
+    return PROTECTED_DIR / f"{uuid4().hex}_{Path(protected.filename or 'protected-video').name}"
 
-    work_title = inferred_work_title(title or protected.filename)
-    discovery: Dict[str, object] = {}
-    # A sleeping connector can need one bounded retry. Public-index runs have
-    # their own provider timeouts and must return promptly.
-    retry_delays = CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS if CONTROLLED_PUBLIC_SOURCE_URL else (0,)
-    for retry_delay in retry_delays:
-        if retry_delay:
-            time.sleep(retry_delay)
-        discovery = public_media_discovery(work_title)
-        if any(bool(source.get("ok")) for source in discovery.get("sourcesScanned", []) if isinstance(source, dict)):
-            break
-    targets = direct_media_targets(discovery)
+
+def verify_public_media_targets(
+    protected_path: Path,
+    discovery: Dict[str, object],
+    targets: List[Dict[str, str]],
+) -> dict:
+    """Run the regular Content-DNA scan on public media exposed by a page.
+
+    The helper is deliberately shared by discovery and a user-supplied link so
+    every public-media result gets the same visual, scene, temporal, duration,
+    and coverage checks as a local candidate upload.
+    """
     if not targets:
         return {
             "foundMatch": False,
-            "message": "No verifiable copy was found in the current public search.",
+            "foundEvidence": False,
+            "message": "No verifiable public video was found at this time.",
             "result": None,
             "discovery": discovery,
             "checkedMedia": 0,
@@ -384,11 +420,12 @@ async def discover_public_copy(
         try:
             downloaded = download_direct_media_candidate(target["url"], run_dir, index)
             result = scan_folder(protected_path, run_dir)[0]
-        except Exception as exc:  # noqa: BLE001 - expose a per-public-file reason without stopping discovery.
+        except Exception as exc:  # noqa: BLE001 - report each public-media failure without stopping the run.
             rejected.append({"url": target["url"], "error": str(exc)[:240]})
             continue
 
         checked += 1
+        decision = str(result.get("decision") or "")
         result.update(
             {
                 "sourceUrl": downloaded.get("finalUrl") or target["url"],
@@ -397,60 +434,138 @@ async def discover_public_copy(
                 "sourceHost": target["host"],
                 "sourceBytes": downloaded.get("bytes", 0),
                 "accessType": "Authorized direct public media URL",
-                "evidenceLevel": 4 if result.get("decision") == "Match" else 3,
-                "evidenceLevelLabel": "Multimodal match" if result.get("decision") == "Match" else "Content fingerprint",
+                "evidenceLevel": 4 if decision == "Match" else 3,
+                "evidenceLevelLabel": "Multimodal match" if decision == "Match" else "Partial Content DNA evidence",
             }
         )
-        # A clipped candidate can be a real, ordered segment of the protected
-        # work. Keep it as reviewable discovery evidence rather than dropping it
-        # just because it is not a full-copy Match.
-        if result.get("decision") in {"Match", "Review"}:
+        # A clipped candidate can still be a real ordered segment of the work.
+        # Preserve it as reviewable evidence instead of presenting it as a full match.
+        if decision in {"Match", "Review"}:
             verified_evidence.append(result)
 
-    if verified_evidence:
-        strongest_match = max(verified_evidence, key=lambda item: float(item.get("confidence", 0) or 0))
-        matched_sources = [
-            {
-                "pageUrl": str(item.get("sourcePage") or ""),
-                "mediaUrl": str(item.get("sourceMediaUrl") or item.get("sourceUrl") or ""),
-                "confidence": float(item.get("confidence", 0) or 0),
-            }
-            for item in verified_evidence
-        ]
-        investigation = build_investigation([strongest_match])
-        investigation["sourceBoundary"] = (
-            "CineShield discovered public direct media references and verified them against the uploaded original. "
-            "This evidence still requires authorized human review."
-        )
+    if not verified_evidence:
         return {
-            "foundMatch": strongest_match.get("decision") == "Match",
-            "foundEvidence": True,
-            "message": (
-                "Web discovery found a full public-video match."
-                if strongest_match.get("decision") == "Match"
-                else "Web discovery found partial public-video evidence that requires review."
-            ),
-            "result": strongest_match,
+            "foundMatch": False,
+            "foundEvidence": False,
+            "message": "No matching public copy was found through public discovery.",
+            "result": None,
             "discovery": discovery,
             "checkedMedia": checked,
-            "matchedMedia": len(verified_evidence),
-            "matchedSources": matched_sources,
+            "matchedMedia": 0,
             "rejectedCandidates": rejected,
-            "investigation": investigation,
             "boundary": url_verification_boundary(),
         }
 
+    strongest_match = max(verified_evidence, key=lambda item: float(item.get("confidence", 0) or 0))
+    matched_sources = [
+        {
+            "pageUrl": str(item.get("sourcePage") or ""),
+            "mediaUrl": str(item.get("sourceMediaUrl") or item.get("sourceUrl") or ""),
+            "confidence": float(item.get("confidence", 0) or 0),
+        }
+        for item in verified_evidence
+    ]
+    investigation = build_investigation([strongest_match])
+    investigation["sourceBoundary"] = (
+        "CineShield compared publicly exposed direct media with the uploaded original. "
+        "The result is evidence for authorized human review."
+    )
     return {
-        "foundMatch": False,
-        "foundEvidence": False,
-        "message": "No verifiable copy was found in the current public search.",
-        "result": None,
+        "foundMatch": strongest_match.get("decision") == "Match",
+        "foundEvidence": True,
+        "message": (
+            "Web discovery found a full public-video match."
+            if strongest_match.get("decision") == "Match"
+            else "Web discovery found partial public-video evidence that requires review."
+        ),
+        "result": strongest_match,
         "discovery": discovery,
         "checkedMedia": checked,
-        "matchedMedia": 0,
+        "matchedMedia": len(verified_evidence),
+        "matchedSources": matched_sources,
         "rejectedCandidates": rejected,
+        "investigation": investigation,
         "boundary": url_verification_boundary(),
     }
+
+
+@app.post("/api/discovery/verify")
+async def discover_public_copy(
+    protected: UploadFile = File(...),
+    authorization_confirmed: bool = Form(False),
+    title: str = Form(""),
+) -> dict:
+    """Discover public direct media and verify it against an authorized original."""
+    if not authorization_confirmed:
+        raise HTTPException(status_code=400, detail="Public media verification requires authorization confirmation.")
+    if not protected.filename:
+        raise HTTPException(status_code=400, detail="Protected video file is required.")
+
+    protected_path = save_protected_upload(protected)
+    with protected_path.open("wb") as handle:
+        while chunk := await protected.read(65536):
+            handle.write(chunk)
+
+    work_title = inferred_work_title(title or protected.filename)
+    discovery: Dict[str, object] = {}
+    # A sleeping connector can need one bounded retry. Public-index runs have
+    # their own provider timeouts and must return promptly.
+    retry_delays = CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS if CONTROLLED_PUBLIC_SOURCE_URL else (0,)
+    for retry_delay in retry_delays:
+        if retry_delay:
+            time.sleep(retry_delay)
+        discovery = public_media_discovery(work_title)
+        if any(bool(source.get("ok")) for source in discovery.get("sourcesScanned", []) if isinstance(source, dict)):
+            break
+    return verify_public_media_targets(protected_path, discovery, direct_media_targets(discovery))
+
+
+@app.post("/api/discovery/verify-link")
+async def verify_public_link(
+    protected: UploadFile = File(...),
+    public_url: str = Form(""),
+    authorization_confirmed: bool = Form(False),
+    title: str = Form(""),
+) -> dict:
+    """Inspect one public page or direct video URL with the normal DNA pipeline."""
+    if not authorization_confirmed:
+        raise HTTPException(status_code=400, detail="Public link verification requires authorization confirmation.")
+    if not protected.filename:
+        raise HTTPException(status_code=400, detail="Protected video file is required.")
+
+    link = str(public_url or "").strip()
+    is_public, reason = is_public_http_url(link)
+    if not is_public:
+        raise HTTPException(status_code=400, detail=reason)
+
+    protected_path = save_protected_upload(protected)
+    with protected_path.open("wb") as handle:
+        while chunk := await protected.read(65536):
+            handle.write(chunk)
+
+    work_title = inferred_work_title(title or protected.filename)
+    is_direct_media, _ = validate_direct_media_url(link)
+    if is_direct_media:
+        parsed = urlparse(link)
+        discovery: Dict[str, object] = {
+            "sourcesScanned": [],
+            "submittedLink": link,
+            "mode": "direct-public-media",
+        }
+        targets = [{"url": link, "pageUrl": link, "host": parsed.netloc.lower()}]
+    else:
+        # Public free-tier hosts can briefly return 503 while waking. Retry a
+        # small fixed number of times before reporting that no public media was found.
+        discovery: Dict[str, object] = {}
+        for retry_delay in CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS:
+            if retry_delay:
+                time.sleep(retry_delay)
+            discovery = configured_source_discovery(work_title, link)
+            if any(bool(source.get("ok")) for source in discovery.get("sourcesScanned", []) if isinstance(source, dict)):
+                break
+        targets = direct_media_targets(discovery)
+
+    return verify_public_media_targets(protected_path, discovery, targets)
 
 
 @app.post("/api/demo/transformed-copy")
