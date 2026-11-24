@@ -1252,6 +1252,7 @@ def scan_public_sources(
     max_pages: int = 6,
     fetcher: Callable[[str], FetchResult] = fetch_url,
     validate_urls: bool = True,
+    include_same_host_links: bool = False,
 ) -> Dict[str, object]:
     discovery_started = time.perf_counter()
     protected_title = collapse_space(title)
@@ -1296,6 +1297,7 @@ def scan_public_sources(
             "authorized": initial_class == "AUTHORIZED",
             "skipped": False,
             "discoveredLinks": [],
+            "sameHostPages": [],
             "fetchMs": 0,
         }
 
@@ -1381,6 +1383,25 @@ def scan_public_sources(
                 link_text = anchor.get("text", "")
                 link_score = score_candidate(query_tokens, link_text, normalized_without_fragment, source_context)
                 link_host = parsed_link.hostname or ""
+                same_host_page = (
+                    include_same_host_links
+                    and not direct_media
+                    and domain_matches(link_host, {str(source_record["host"])})
+                    and parsed_link.path not in {"", "/"}
+                )
+                if same_host_page and normalized_without_fragment not in seen_expansion_urls:
+                    seen_expansion_urls.add(normalized_without_fragment)
+                    expansion_record = {
+                        "title": collapse_space(link_text) or parsed_link.path.rsplit("/", 1)[-1] or link_host,
+                        "url": normalized_without_fragment,
+                        "host": link_host,
+                        "score": max(20, int(link_score["score"])),
+                        "sourcePage": fetched.final_url,
+                        "sourceTitle": source_title,
+                        "sourceType": "Same-host public page",
+                    }
+                    expansion_urls.append(expansion_record)
+                    source_expansion_urls.append(expansion_record)
                 if (
                     not direct_media
                     and (int(link_score["score"]) >= 20 or int(link_score.get("metadataScore", 0)) >= 45)
@@ -1429,6 +1450,11 @@ def scan_public_sources(
                 key=lambda item: int(item.get("score", 0)),
                 reverse=True,
             )[:8]
+            source_record["sameHostPages"] = [
+                item["url"]
+                for item in source_expansion_urls
+                if item.get("sourceType") == "Same-host public page"
+            ][:8]
         except Exception as exc:  # noqa: BLE001 - connector reports source failures in the UI.
             source_record["error"] = str(exc)[:220]
             source_record["sourceClass"] = "BLOCKED"

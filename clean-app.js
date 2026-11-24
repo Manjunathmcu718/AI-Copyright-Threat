@@ -1,4 +1,6 @@
 const DESK_API = "http://127.0.0.1:8001";
+const DESK_HISTORY_KEY = "cineshield.local-history.v1";
+const DESK_HISTORY_LIMIT = 24;
 
 const deskState = {
   protectedFile: null,
@@ -8,7 +10,8 @@ const deskState = {
   publicSource: null,
   resultNotice: null,
   selectedIndex: 0,
-  busy: false
+  busy: false,
+  history: deskLoadHistory()
 };
 
 const desk = (selector) => document.querySelector(selector);
@@ -17,6 +20,77 @@ function deskEscape(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;"
   }[character]));
+}
+
+function deskLoadHistory() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(DESK_HISTORY_KEY) || "[]");
+    return Array.isArray(stored) ? stored.slice(0, DESK_HISTORY_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function deskSaveHistory() {
+  try {
+    localStorage.setItem(DESK_HISTORY_KEY, JSON.stringify(deskState.history));
+  } catch {
+    // History is a convenience only; comparisons remain available if browser storage is disabled.
+  }
+}
+
+function deskHistoryTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Saved just now" : date.toLocaleString();
+}
+
+function deskRenderHistory() {
+  const list = desk("#desk-history-list");
+  const clearButton = desk("#desk-clear-history");
+  if (!list || !clearButton) return;
+
+  clearButton.disabled = deskState.history.length === 0;
+  if (!deskState.history.length) {
+    list.innerHTML = '<div class="desk-history-empty">No completed checks yet. Your comparisons and public-discovery outcomes will appear here.</div>';
+    return;
+  }
+
+  list.innerHTML = deskState.history.map((entry) => {
+    const sources = Array.isArray(entry.sources) ? entry.sources : [];
+    const candidateNames = Array.isArray(entry.candidates) ? entry.candidates.filter(Boolean) : [];
+    const candidateText = candidateNames.length
+      ? `Candidate${candidateNames.length === 1 ? "" : "s"}: ${candidateNames.join(", ")}`
+      : entry.operation === "Web discovery" ? "Public discovery using the uploaded original" : "No candidate filename retained";
+    const sourceLinks = sources.map((source, index) => {
+      const pageUrl = String(source?.pageUrl || "");
+      const mediaUrl = String(source?.mediaUrl || "");
+      const target = pageUrl || mediaUrl;
+      return target
+        ? `<a href="${deskEscape(target)}" target="_blank" rel="noreferrer">Verified match ${index + 1} ↗</a>`
+        : "";
+    }).filter(Boolean).join(" · ");
+    const confidence = Number.isFinite(Number(entry.confidence)) ? `${Number(entry.confidence).toFixed(1)}%` : "—";
+    const tone = deskDecisionTone(entry.decision);
+    return `<article class="desk-history-entry"><div><h3>${deskEscape(entry.workTitle || entry.original || "Untitled check")}</h3><p>${deskEscape(entry.operation || "Verification")} · Original: ${deskEscape(entry.original || "Unnamed video")}</p><p>${deskEscape(candidateText)}</p>${sourceLinks ? `<small>${sourceLinks}</small>` : ""}<small>${deskEscape(deskHistoryTime(entry.createdAt))}</small></div><div class="desk-history-tags"><span class="desk-history-tag">${deskEscape(entry.operation || "Verification")}</span><span class="desk-history-tag ${tone}">${deskEscape(entry.decision || "Completed")}</span><span class="desk-history-tag">${confidence}</span></div></article>`;
+  }).join("");
+}
+
+function deskRecordHistory(entry) {
+  const record = {
+    id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    createdAt: new Date().toISOString(),
+    operation: "Verification",
+    workTitle: "",
+    original: "",
+    candidates: [],
+    decision: "Completed",
+    confidence: 0,
+    sources: [],
+    ...entry
+  };
+  deskState.history = [record, ...deskState.history].slice(0, DESK_HISTORY_LIMIT);
+  deskSaveHistory();
+  deskRenderHistory();
 }
 
 function deskFormatBytes(bytes) {
@@ -225,11 +299,14 @@ function deskRenderResults() {
   const signals = result.signals || {};
   const signalNames = ["Visual", "Scene", "Temporal", "Duration", "Coverage"];
   const reasons = Array.isArray(result.reasons) ? result.reasons : [];
+  const matchingEvidence = Array.isArray(result.matchingEvidence) ? result.matchingEvidence : [];
+  const mismatchEvidence = Array.isArray(result.mismatchEvidence) ? result.mismatchEvidence : [];
   const tone = deskDecisionTone(result.decision);
   const sourceUrl = result.sourcePage || result.sourceUrl || deskState.publicSource?.pageUrl || "";
   const sourceHost = result.sourceHost || deskState.publicSource?.host || "";
   const mediaUrl = result.sourceMediaUrl || result.sourceUrl || "";
   const resultLabel = deskResultLabel(result, deskState.selectedIndex);
+  const scoreLabel = tone === "no-match" ? "verified copy confidence" : "confidence";
   desk("#desk-selected-result").innerHTML = `
     <div class="desk-result-top">
       <div>
@@ -238,14 +315,18 @@ function deskRenderResults() {
       </div>
       <div class="desk-decision ${tone}">
         <strong>${deskEscape(result.decision || "No result")}</strong>
-        <span>${Number(result.confidence || 0).toFixed(1)}% confidence</span>
+        <span>${Number(result.confidence || 0).toFixed(1)}% ${scoreLabel}</span>
       </div>
     </div>
     <div class="desk-signal-grid">
       ${signalNames.map((name) => `<div class="desk-signal" style="--signal:${Math.max(0, Math.min(100, Number(signals[name] || 0)))}%"><span>${name}</span><strong>${Number(signals[name] || 0)}%</strong></div>`).join("")}
     </div>
+    <div class="desk-evidence-breakdown">
+      <section class="desk-evidence-support"><span>Supports a copy</span><ul>${matchingEvidence.map((item) => `<li>${deskEscape(item)}</li>`).join("") || "<li>No independent signal met the copy threshold.</li>"}</ul></section>
+      <section class="desk-evidence-mismatch"><span>Does not support a copy</span><ul>${mismatchEvidence.map((item) => `<li>${deskEscape(item)}</li>`).join("") || "<li>No material mismatch was detected.</li>"}</ul></section>
+    </div>
     <ul class="desk-reasons">
-      ${reasons.map((reason) => `<li>${deskEscape(reason)}</li>`).join("") || "<li>The comparison completed without additional notes.</li>"}
+      ${reasons.length ? `<li>${deskEscape(reasons[reasons.length - 1])}</li>` : "<li>The comparison completed without additional notes.</li>"}
     </ul>
     <div class="desk-result-actions"><button class="desk-quiet" id="desk-copy-summary" type="button">Copy summary</button></div>`;
 
@@ -289,6 +370,15 @@ async function deskRunScan() {
     deskState.publicSource = null;
     deskState.resultNotice = null;
     deskState.selectedIndex = 0;
+    const topResult = deskState.results[0] || {};
+    deskRecordHistory({
+      operation: "Local comparison",
+      workTitle: desk("#desk-work-title").value.trim() || deskInferTitle(deskState.protectedFile?.name),
+      original: deskState.protectedFile?.name || "Unnamed original",
+      candidates: deskState.candidateFiles.map((file) => file.name),
+      decision: topResult.decision || "No result",
+      confidence: Number(topResult.confidence || 0)
+    });
     deskRenderResults();
     deskSetProgress(2);
     const top = deskState.results[0];
@@ -378,6 +468,9 @@ async function deskInspectSource() {
     const response = await fetch(`${DESK_API}/api/discovery/controlled-verify`, { method: "POST", body: formData });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "The public website could not be inspected.");
+    const checkedMedia = Math.max(0, Number(payload.checkedMedia || 0));
+    const matchedMedia = Math.max(0, Number(payload.matchedMedia || 0));
+    const checkedLabel = checkedMedia === 1 ? "1 accessible public video" : `${checkedMedia} accessible public videos`;
     if (!payload.foundMatch || !payload.result) {
       deskState.results = [];
       deskState.investigation = null;
@@ -386,12 +479,20 @@ async function deskInspectSource() {
         title: "No verifiable copy found.",
         detail: "CineShield checked the current public video evidence and found no Content DNA match for this original."
       };
+      deskRecordHistory({
+        operation: "Web discovery",
+        workTitle: title,
+        original: deskState.protectedFile?.name || "Unnamed original",
+        decision: "No match",
+        confidence: 0
+      });
       deskRenderResults();
       deskSetProgress(0);
       deskSetStatus("No match", "review");
       deskSetDiscoveryState("No matching public copy", "review");
-      deskSetSourceFeedback(`<strong>Web discovery complete.</strong><br>${deskEscape(payload.message || "No verifiable copy was found in the current public search.")}`);
-      deskSetActivity("No verifiable copy found", "Public videos were checked, but none matched the uploaded original.", "error");
+      const noMatchDetail = "No matching public copy was found through public discovery.";
+      deskSetSourceFeedback(`<strong>Web discovery complete.</strong><br>${deskEscape(noMatchDetail)}`);
+      deskSetActivity("No verifiable copy found", noMatchDetail, "error");
       return;
     }
     const result = payload.result;
@@ -403,13 +504,29 @@ async function deskInspectSource() {
       host: result.sourceHost || ""
     };
     deskState.selectedIndex = 0;
+    deskRecordHistory({
+      operation: "Web discovery",
+      workTitle: title,
+      original: deskState.protectedFile?.name || "Unnamed original",
+      decision: result.decision || "Match",
+      confidence: Number(result.confidence || 0),
+      sources: Array.isArray(payload.matchedSources) ? payload.matchedSources : []
+    });
     deskRenderResults();
     deskSetProgress(2);
     const top = deskState.results[0];
     deskSetStatus(top?.decision || "Complete", deskDecisionTone(top?.decision));
     deskSetDiscoveryState("Matching public video found", "match");
-    deskSetSourceFeedback(`<strong>Web discovery found a matching video.</strong><ul><li>Video page: ${deskEscape(top.sourcePage || "")}</li><li>Video URL: ${deskEscape(top.sourceMediaUrl || top.sourceUrl || "")}</li><li>Decision: ${deskEscape(top.decision || "No result")} (${Number(top.confidence || 0).toFixed(1)}%)</li></ul>`);
-    deskSetActivity("Web discovery found a match", "A public video matched the uploaded original by Content DNA.");
+    const matchLabel = matchedMedia === 1 ? "1 matching video" : `${matchedMedia} matching videos`;
+    const verifiedSources = Array.isArray(payload.matchedSources) ? payload.matchedSources : [];
+    const sourceRows = verifiedSources.map((source, index) => {
+      const pageUrl = String(source?.pageUrl || "");
+      const mediaUrl = String(source?.mediaUrl || "");
+      const confidence = Number(source?.confidence || 0).toFixed(1);
+      return `<li><strong>Match ${index + 1} (${confidence}%):</strong> <a href="${deskEscape(pageUrl || mediaUrl)}" target="_blank" rel="noreferrer">${deskEscape(pageUrl || mediaUrl)}</a>${mediaUrl && mediaUrl !== pageUrl ? `<br><a href="${deskEscape(mediaUrl)}" target="_blank" rel="noreferrer">${deskEscape(mediaUrl)}</a>` : ""}</li>`;
+    }).join("");
+    deskSetSourceFeedback(`<strong>Web discovery found ${deskEscape(matchLabel)}.</strong><ul><li>Public videos checked: ${checkedMedia}</li><li>Decision: ${deskEscape(top.decision || "No result")} (${Number(top.confidence || 0).toFixed(1)}%)</li>${sourceRows || `<li>Video page: ${deskEscape(top.sourcePage || "")}</li><li>Video URL: ${deskEscape(top.sourceMediaUrl || top.sourceUrl || "")}</li>`}</ul>`);
+    deskSetActivity("Web discovery found a match", `${matchLabel} verified by Content DNA after checking ${checkedLabel}.`);
     desk("#desk-results").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     deskSetStatus("Could not verify", "error");
@@ -448,6 +565,15 @@ async function deskVerifyPublicUrl() {
     deskState.investigation = payload.investigation || null;
     deskState.publicSource = { pageUrl: url, host: "" };
     deskState.selectedIndex = 0;
+    const directTopResult = deskState.results[0] || {};
+    deskRecordHistory({
+      operation: "Direct URL check",
+      workTitle: deskSourceTitle(),
+      original: deskState.protectedFile?.name || "Unnamed original",
+      decision: directTopResult.decision || "No result",
+      confidence: Number(directTopResult.confidence || 0),
+      sources: [{ pageUrl: url, mediaUrl: directTopResult.sourceMediaUrl || directTopResult.sourceUrl || url }]
+    });
     deskRenderResults();
     deskSetProgress(2);
     const top = deskState.results[0];
@@ -523,6 +649,12 @@ function deskBindEvents() {
   desk("#desk-run-scan").addEventListener("click", deskRunScan);
   desk("#desk-create-copy").addEventListener("click", deskCreateTestCopy);
   desk("#desk-clear").addEventListener("click", deskClearFiles);
+  desk("#desk-clear-history").addEventListener("click", () => {
+    deskState.history = [];
+    deskSaveHistory();
+    deskRenderHistory();
+    deskNotify("Local history cleared.");
+  });
   desk("#desk-inspect-source").addEventListener("click", deskInspectSource);
   desk("#desk-verify-url")?.addEventListener("click", deskVerifyPublicUrl);
   desk("#desk-open-source").addEventListener("click", () => {
@@ -559,4 +691,5 @@ function deskBindEvents() {
 
 deskRenderFiles();
 deskRenderResults();
+deskRenderHistory();
 deskBindEvents();

@@ -167,9 +167,24 @@ def compare_dna(protected: Dict[str, object], candidate: Dict[str, object]) -> D
     low_coverage_only = alignment["coverage"] < 0.45 and alignment["mean"] < 0.93
     bounded_confidence = min(confidence, 0.84) if low_coverage_only else confidence
 
-    if bounded_confidence >= 0.86:
+    strong_copy_evidence = (
+        alignment["mean"] >= 0.80
+        and alignment["scene"] >= 0.76
+        and alignment["coverage"] >= 0.45
+        and (temporal_score >= 0.45 or duration_score >= 0.65)
+    )
+    review_evidence = (
+        alignment["mean"] >= 0.62
+        and alignment["scene"] >= 0.55
+        and alignment["coverage"] >= 0.30
+    )
+
+    # A weighted score is not sufficient on its own.  A Match must also pass
+    # independent visual, scene, and coverage gates so unrelated clips cannot
+    # become a Match just because of a coincidental low-level similarity.
+    if bounded_confidence >= 0.86 and strong_copy_evidence:
         decision = "Match"
-    elif bounded_confidence >= 0.72:
+    elif bounded_confidence >= 0.72 and review_evidence:
         decision = "Review"
     else:
         decision = "No match"
@@ -182,23 +197,47 @@ def compare_dna(protected: Dict[str, object], candidate: Dict[str, object]) -> D
         "Coverage": int(round(alignment["coverage"] * 100)),
     }
 
-    reasons = [
-        f"Visual frame signature {signals['Visual']}%",
-        f"Scene order and coverage {signals['Scene']}%",
-        f"Temporal motion profile {signals['Temporal']}%",
-        "Duration profile supports the comparison" if duration_score >= 0.76 else "Duration mismatch keeps the decision gated",
-        "Candidate crossed the high-confidence threshold" if decision == "Match" else "Evidence is meaningful but needs human review" if decision == "Review" else "Evidence is below same-content threshold",
+    checks = [
+        ("Visual frame signature", signals["Visual"], 80),
+        ("Scene order", signals["Scene"], 76),
+        ("Temporal motion profile", signals["Temporal"], 45),
+        ("Timeline duration", signals["Duration"], 35),
+        ("Shared source coverage", signals["Coverage"], 45),
     ]
+    matching_evidence = [
+        f"{label} {score}% meets the {threshold}% copy-evidence threshold"
+        for label, score, threshold in checks
+        if score >= threshold
+    ]
+    mismatch_evidence = [
+        f"{label} {score}% is below the {threshold}% copy-evidence threshold"
+        for label, score, threshold in checks
+        if score < threshold
+    ]
+    decision_reason = (
+        "Independent visual, scene, and coverage checks support a content match"
+        if decision == "Match"
+        else "Some evidence is present, but the result requires human review"
+        if decision == "Review"
+        else "No independent copy-evidence threshold was met; verified copy confidence is 0%"
+        if not matching_evidence
+        else "Independent copy-evidence checks did not support the same-content claim"
+    )
+    reasons = [*matching_evidence, *mismatch_evidence, decision_reason]
+    verified_copy_confidence = bounded_confidence if decision != "No match" else 0.0
 
     return {
         "fileName": candidate.get("file_name"),
         "duration": float(candidate.get("duration", 0.0)),
         "dnaId": candidate.get("dna_id"),
         "sampledFrames": candidate.get("sampled_frames"),
-        "confidence": round(float(bounded_confidence) * 100, 1),
+        "confidence": round(float(verified_copy_confidence) * 100, 1),
+        "rawSimilarity": round(float(bounded_confidence) * 100, 1),
         "decision": decision,
         "signals": signals,
         "weights": {key: int(round(value * 100)) for key, value in weights.items()},
+        "matchingEvidence": matching_evidence,
+        "mismatchEvidence": mismatch_evidence,
         "reasons": reasons,
     }
 

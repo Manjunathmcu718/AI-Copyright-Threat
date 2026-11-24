@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b0f18" />
     <title>CineShield | Video copy verification</title>
-    <link rel="stylesheet" href="./clean-styles.css?v=20261124-3" />
+    <link rel="stylesheet" href="./clean-styles.css?v=20261124-6" />
   </head>
   <body class="clean-ui">
     <div class="verification-desk" id="desk-top">
       <header class="desk-header">
         <a class="desk-brand" href="#desk-top" aria-label="CineShield home"><img src="./assets/cineshield-mark.svg" alt="" /><span>CineShield</span></a>
-        <nav class="desk-nav" aria-label="Main navigation"><a href="#desk-verify">Verify</a><a href="#desk-results">Results</a><a href="#desk-source-check">Web discovery</a></nav>
+        <nav class="desk-nav" aria-label="Main navigation"><a href="#desk-verify">Verify</a><a href="#desk-results">Results</a><a href="#desk-source-check">Web discovery</a><a href="#desk-history">History</a></nav>
         <div class="desk-header-actions"><button class="desk-text-button" id="desk-open-source" type="button" title="Inspect a public page you are permitted to review">Check a public link</button><button class="desk-header-cta" id="desk-start" type="button">New check <span aria-hidden="true">↘</span></button></div>
       </header>
 
@@ -68,7 +68,7 @@
         <details class="desk-wrap desk-source" id="desk-source-check">
           <summary><span><strong>Web discovery</strong><small>Find and verify matching public-video evidence.</small></span><b aria-hidden="true">+</b></summary>
           <div class="desk-source-content">
-            <div class="desk-discovery-topline"><div><p class="desk-eyebrow">Section 03 — Controlled public source</p><p>Upload your original above, confirm authorization, then let CineShield look for a matching public video.</p></div><span class="desk-discovery-state" id="desk-discovery-state"><i aria-hidden="true"></i>Ready to check</span></div>
+            <div class="desk-discovery-topline"><div><p class="desk-eyebrow">Section 03 — Public web discovery</p><p>Upload your original above, confirm authorization, then let CineShield search accessible public video evidence for a Content DNA match.</p></div><span class="desk-discovery-state" id="desk-discovery-state"><i aria-hidden="true"></i>Ready to check</span></div>
             <ol class="desk-discovery-steps" aria-label="Web discovery steps"><li><span>01</span><strong>Original video</strong><small>Use the protected video you selected.</small></li><li><span>02</span><strong>Permission</strong><small>Confirm you can verify public evidence.</small></li><li><span>03</span><strong>Source check</strong><small>Match discovered media against Content DNA.</small></li></ol>
             <div class="desk-source-fields"><label class="desk-field"><span>Video title <i>Optional</i></span><input id="desk-source-title" type="text" placeholder="Uses the uploaded video name if blank" /></label></div>
             <label class="desk-check desk-discovery-consent"><input id="desk-url-authorized" type="checkbox" /><span><strong>I am authorized to run this check.</strong><small>CineShield will compare only public video evidence found during this controlled test.</small></span></label>
@@ -86,6 +86,11 @@
             <div class="desk-proof-item"><span>Matched video</span><a id="desk-proof-media" href="#" target="_blank" rel="noreferrer">Open direct video ↗</a><small id="desk-proof-media-url">—</small></div>
             <div class="desk-proof-item"><span>Verification</span><strong id="desk-proof-verification">—</strong><small>Content DNA comparison</small></div>
           </div>
+        </section>
+
+        <section class="desk-wrap desk-history" id="desk-history" aria-labelledby="desk-history-title">
+          <div class="desk-history-heading"><div><p class="desk-eyebrow">Local activity</p><h2 id="desk-history-title">Previous checks.</h2><p>Saved in this browser only. Video files are never stored in history.</p></div><button class="desk-quiet" id="desk-clear-history" type="button">Clear history</button></div>
+          <div class="desk-history-list" id="desk-history-list" aria-live="polite"></div>
         </section>
       </main>
       <footer class="desk-footer desk-wrap"><span>CineShield is for videos you own or are authorized to analyse.</span><span>Every result is evidence for human review.</span></footer>
@@ -696,6 +701,6 @@ youtube.com</textarea>
       </main>
     </div>
 
-    <script src="./clean-app.js?v=20261123-7"></script>
+    <script src="./clean-app.js?v=20261124-14"></script>
   </body>
 </html>

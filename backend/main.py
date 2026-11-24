@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 import time
 from pathlib import Path
 from typing import Dict, List
@@ -42,7 +43,7 @@ CONTROLLED_PUBLIC_SOURCE_URL = os.environ.get(
     "https://vidshare-dyvy.onrender.com",
 ).strip().rstrip("/")
 CONTROLLED_PUBLIC_SOURCE_MEDIA_LIMIT = 4
-CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS = (0, 4, 10, 18)
+CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS = (0, 4, 10)
 
 
 def load_local_env() -> None:
@@ -137,6 +138,70 @@ def direct_media_targets(discovery: Dict[str, object]) -> List[Dict[str, str]]:
     return targets[:CONTROLLED_PUBLIC_SOURCE_MEDIA_LIMIT]
 
 
+def controlled_public_discovery(work_title: str) -> Dict[str, object]:
+    """Discover public watch pages before collecting their direct video evidence.
+
+    The first bounded pass reads the public landing page and sitemap.  Its same-host
+    links are then used as explicit seeds for one more bounded pass, so a video
+    remains discoverable even when the page title differs from the uploaded file.
+    """
+    initial = scan_public_sources(
+        title=work_title,
+        aliases=[],
+        seed_urls=[CONTROLLED_PUBLIC_SOURCE_URL],
+        authorized_domains=[],
+        max_pages=8,
+        include_same_host_links=True,
+    )
+
+    page_urls: List[str] = []
+    seen_pages: set[str] = set()
+    for source in initial.get("sourcesScanned", []):
+        if not isinstance(source, dict):
+            continue
+        for page_url in source.get("sameHostPages", []):
+            cleaned = str(page_url or "").strip()
+            if cleaned and cleaned not in seen_pages:
+                seen_pages.add(cleaned)
+                page_urls.append(cleaned)
+            if len(page_urls) >= 7:
+                break
+        if len(page_urls) >= 7:
+            break
+
+    if not page_urls:
+        return initial
+
+    expanded = scan_public_sources(
+        title=work_title,
+        aliases=[],
+        seed_urls=[CONTROLLED_PUBLIC_SOURCE_URL, *page_urls],
+        authorized_domains=[],
+        max_pages=8,
+    )
+
+    merged_sources: List[Dict[str, object]] = []
+    seen_source_urls: set[str] = set()
+    for report in (initial, expanded):
+        for source in report.get("sourcesScanned", []):
+            if not isinstance(source, dict):
+                continue
+            key = str(source.get("url") or "").strip()
+            if key and key in seen_source_urls:
+                continue
+            if key:
+                seen_source_urls.add(key)
+            merged_sources.append(source)
+
+    combined = dict(expanded)
+    combined["sourcesScanned"] = merged_sources
+    combined["seedCount"] = len({CONTROLLED_PUBLIC_SOURCE_URL, *page_urls})
+    combined["sitemapPagesDiscovered"] = int(initial.get("sitemapPagesDiscovered", 0)) + int(
+        expanded.get("sitemapPagesDiscovered", 0)
+    )
+    return combined
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
@@ -155,24 +220,33 @@ async def register_content(file: UploadFile = File(...)) -> dict:
 
 @app.post("/api/scan")
 async def scan_content(protected: UploadFile = File(...), candidates: List[UploadFile] = File(...)) -> dict:
-    protected_path = PROTECTED_DIR / protected.filename
-    protected_path.parent.mkdir(parents=True, exist_ok=True)
-    with protected_path.open("wb") as handle:
-        while chunk := await protected.read(65536):
-            handle.write(chunk)
+    protected_name = Path(protected.filename or "").name
+    selected_candidates = [candidate for candidate in candidates if candidate.filename]
+    if not protected_name:
+        raise HTTPException(status_code=400, detail="Original video file is required.")
+    if not selected_candidates:
+        raise HTTPException(status_code=400, detail="At least one candidate video is required.")
 
-    candidate_dir = CANDIDATE_DIR
-    candidate_dir.mkdir(parents=True, exist_ok=True)
-
-    for candidate in candidates:
-        if not candidate.filename:
-            continue
-        target = candidate_dir / candidate.filename
-        with target.open("wb") as handle:
-            while chunk := await candidate.read(65536):
+    # Every local comparison uses an empty temporary workspace.  This prevents a
+    # previous candidate upload from being included in a later result.
+    with tempfile.TemporaryDirectory(prefix="cineshield-local-scan-") as temporary_dir:
+        run_dir = Path(temporary_dir)
+        protected_path = run_dir / "protected" / protected_name
+        protected_path.parent.mkdir(parents=True, exist_ok=True)
+        with protected_path.open("wb") as handle:
+            while chunk := await protected.read(65536):
                 handle.write(chunk)
 
-    results = scan_folder(protected_path, candidate_dir)
+        candidate_dir = run_dir / "candidates"
+        candidate_dir.mkdir(parents=True, exist_ok=True)
+        for candidate in selected_candidates:
+            target = candidate_dir / Path(candidate.filename or "candidate.mp4").name
+            with target.open("wb") as handle:
+                while chunk := await candidate.read(65536):
+                    handle.write(chunk)
+
+        results = scan_folder(protected_path, candidate_dir)
+
     return {"scanned": len(results), "results": results, "investigation": build_investigation(results)}
 
 
@@ -267,13 +341,7 @@ async def discover_controlled_public_copy(
     for retry_delay in CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS:
         if retry_delay:
             time.sleep(retry_delay)
-        discovery = scan_public_sources(
-            title=work_title,
-            aliases=[],
-            seed_urls=[CONTROLLED_PUBLIC_SOURCE_URL],
-            authorized_domains=[],
-            max_pages=8,
-        )
+        discovery = controlled_public_discovery(work_title)
         if any(bool(source.get("ok")) for source in discovery.get("sourcesScanned", []) if isinstance(source, dict)):
             break
     targets = direct_media_targets(discovery)
@@ -284,12 +352,14 @@ async def discover_controlled_public_copy(
             "result": None,
             "discovery": discovery,
             "checkedMedia": 0,
+            "matchedMedia": 0,
             "rejectedCandidates": [],
             "boundary": url_verification_boundary(),
         }
 
     rejected: List[Dict[str, str]] = []
     checked = 0
+    matches: List[Dict[str, object]] = []
     for index, target in enumerate(targets):
         run_dir = URL_CANDIDATE_DIR / uuid4().hex
         try:
@@ -313,21 +383,35 @@ async def discover_controlled_public_copy(
             }
         )
         if result.get("decision") == "Match":
-            investigation = build_investigation([result])
-            investigation["sourceBoundary"] = (
-                "CineShield discovered a public direct media reference and verified it against the uploaded original. "
-                "This evidence still requires authorized human review."
-            )
-            return {
-                "foundMatch": True,
-                "message": "Web discovery found a matching video.",
-                "result": result,
-                "discovery": discovery,
-                "checkedMedia": checked,
-                "rejectedCandidates": rejected,
-                "investigation": investigation,
-                "boundary": url_verification_boundary(),
+            matches.append(result)
+
+    if matches:
+        strongest_match = max(matches, key=lambda item: float(item.get("confidence", 0) or 0))
+        matched_sources = [
+            {
+                "pageUrl": str(item.get("sourcePage") or ""),
+                "mediaUrl": str(item.get("sourceMediaUrl") or item.get("sourceUrl") or ""),
+                "confidence": float(item.get("confidence", 0) or 0),
             }
+            for item in matches
+        ]
+        investigation = build_investigation([strongest_match])
+        investigation["sourceBoundary"] = (
+            "CineShield discovered public direct media references and verified them against the uploaded original. "
+            "This evidence still requires authorized human review."
+        )
+        return {
+            "foundMatch": True,
+            "message": "Web discovery found matching public video evidence.",
+            "result": strongest_match,
+            "discovery": discovery,
+            "checkedMedia": checked,
+            "matchedMedia": len(matches),
+            "matchedSources": matched_sources,
+            "rejectedCandidates": rejected,
+            "investigation": investigation,
+            "boundary": url_verification_boundary(),
+        }
 
     return {
         "foundMatch": False,
@@ -335,6 +419,7 @@ async def discover_controlled_public_copy(
         "result": None,
         "discovery": discovery,
         "checkedMedia": checked,
+        "matchedMedia": 0,
         "rejectedCandidates": rejected,
         "boundary": url_verification_boundary(),
     }
