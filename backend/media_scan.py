@@ -70,6 +70,7 @@ def sample_video_for_dna(video_path: str | Path) -> Dict[str, object]:
     if not capture.isOpened():
         raise ValueError(f"Could not open video: {video_path}")
 
+    fps = float(capture.get(cv2.CAP_PROP_FPS)) or 30.0
     frames: List[np.ndarray] = []
     while True:
         ok, frame = capture.read()
@@ -81,10 +82,15 @@ def sample_video_for_dna(video_path: str | Path) -> Dict[str, object]:
     if not frames:
         raise ValueError(f"No frames found in video: {video_path}")
 
-    sample_count = min(8, max(4, len(frames)))
+    # A short candidate can be one continuous segment from a longer original.
+    # Eight sparse samples are not enough to find that temporal offset, so keep
+    # a bounded two-samples-per-second fingerprint (12–24 frames per video).
+    duration = max(1.0, float(len(frames)) / fps)
+    sample_count = min(24, max(12, int(round(duration * 2))))
+    sample_count = min(sample_count, len(frames))
     sampled = []
-    stride = max(1, len(frames) // sample_count)
-    for frame in frames[::stride][:sample_count]:
+    for frame_index in np.linspace(0, len(frames) - 1, num=sample_count, dtype=int):
+        frame = frames[int(frame_index)]
         resized = cv2.resize(frame, (20, 12), interpolation=cv2.INTER_AREA)
         gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY).astype(np.float32)
         values = gray.ravel() / 255.0
@@ -94,7 +100,6 @@ def sample_video_for_dna(video_path: str | Path) -> Dict[str, object]:
         sampled.append((centered / norm).tolist())
 
     temporal_profile = build_temporal_profile(sampled)
-    duration = max(1.0, float(len(frames)) / max(1.0, 30.0))
     return {
         "duration": duration,
         "visual_vectors": [np.asarray(vector, dtype=np.float32) for vector in sampled],
@@ -106,7 +111,52 @@ def sample_video_for_dna(video_path: str | Path) -> Dict[str, object]:
     }
 
 
-def align_frames(protected: Dict[str, object], candidate: Dict[str, object]) -> Dict[str, float]:
+def strongest_ordered_segment(matches: Sequence[Dict[str, float]]) -> Dict[str, float]:
+    """Find a contiguous, in-order run of strong frame correspondences.
+
+    A trimmed or speed-modified candidate is not expected to cover the entire
+    protected timeline. This identifies the strongest continuous segment without
+    allowing unrelated isolated frames to become a copy claim.
+    """
+    threshold = 0.82
+    best: List[Dict[str, float]] = []
+    current: List[Dict[str, float]] = []
+    previous_index = -1
+
+    for match in matches:
+        score = float(match["score"])
+        source_index = int(match["index"])
+        if score >= threshold and (not current or source_index > previous_index):
+            current.append(match)
+            previous_index = source_index
+        else:
+            if len(current) > len(best):
+                best = current
+            current = [match] if score >= threshold else []
+            previous_index = source_index if current else -1
+
+    if len(current) > len(best):
+        best = current
+
+    if not best:
+        return {
+            "length": 0.0,
+            "mean": 0.0,
+            "candidate_fraction": 0.0,
+            "source_start": -1.0,
+            "source_end": -1.0,
+        }
+
+    return {
+        "length": float(len(best)),
+        "mean": float(sum(float(match["score"]) for match in best) / len(best)),
+        "candidate_fraction": float(len(best) / max(1, len(matches))),
+        "source_start": float(best[0]["index"]),
+        "source_end": float(best[-1]["index"]),
+    }
+
+
+def align_frames(protected: Dict[str, object], candidate: Dict[str, object]) -> Dict[str, object]:
     protected_frames = protected["visual_vectors"]
     candidate_frames = candidate["visual_vectors"]
 
@@ -130,7 +180,13 @@ def align_frames(protected: Dict[str, object], candidate: Dict[str, object]) -> 
     order = 1.0 if len(matches) <= 1 else ordered_pairs / (len(matches) - 1)
     coverage = len({item["index"] for item in matches}) / max(len(protected_frames), 1)
     scene = float(np.clip(mean * 0.72 + order * 0.2 + coverage * 0.08, 0.0, 1.0))
-    return {"mean": float(mean), "order": float(order), "coverage": float(coverage), "scene": scene}
+    return {
+        "mean": float(mean),
+        "order": float(order),
+        "coverage": float(coverage),
+        "scene": scene,
+        "ordered_segment": strongest_ordered_segment(matches),
+    }
 
 
 def temporal_similarity(protected: Dict[str, object], candidate: Dict[str, object]) -> float:
@@ -164,6 +220,18 @@ def compare_dna(protected: Dict[str, object], candidate: Dict[str, object]) -> D
         + temporal_score * weights["temporal"]
         + duration_score * weights["metadata"]
     )
+    segment = alignment["ordered_segment"]
+    segment_length = int(segment["length"])
+    segment_mean = float(segment["mean"])
+    segment_candidate_fraction = float(segment["candidate_fraction"])
+    protected_frame_count = max(1, len(protected["visual_vectors"]))
+    segment_source_fraction = segment_length / protected_frame_count
+    partial_segment_evidence = (
+        duration_score < 0.80
+        and segment_length >= 3
+        and segment_mean >= 0.82
+        and max(segment_candidate_fraction, segment_source_fraction) >= 0.25
+    )
     low_coverage_only = alignment["coverage"] < 0.45 and alignment["mean"] < 0.93
     bounded_confidence = min(confidence, 0.84) if low_coverage_only else confidence
 
@@ -179,15 +247,27 @@ def compare_dna(protected: Dict[str, object], candidate: Dict[str, object]) -> D
         and alignment["coverage"] >= 0.30
     )
 
-    # A weighted score is not sufficient on its own.  A Match must also pass
+    # A weighted score is not sufficient on its own. A Match must also pass
     # independent visual, scene, and coverage gates so unrelated clips cannot
     # become a Match just because of a coincidental low-level similarity.
     if bounded_confidence >= 0.86 and strong_copy_evidence:
         decision = "Match"
     elif bounded_confidence >= 0.72 and review_evidence:
         decision = "Review"
+    elif partial_segment_evidence:
+        # A verified excerpt is useful evidence, but it is not treated as a
+        # full-copy match until a reviewer confirms the short source coverage.
+        decision = "Review"
     else:
         decision = "No match"
+
+    partial_confidence = (
+        segment_mean * 0.65
+        + segment_candidate_fraction * 0.20
+        + segment_source_fraction * 0.15
+    )
+    if decision == "Review" and partial_segment_evidence:
+        bounded_confidence = max(bounded_confidence, partial_confidence)
 
     signals = {
         "Visual": int(round(alignment["mean"] * 100)),
@@ -209,6 +289,13 @@ def compare_dna(protected: Dict[str, object], candidate: Dict[str, object]) -> D
         for label, score, threshold in checks
         if score >= threshold
     ]
+    if partial_segment_evidence:
+        matching_evidence.append(
+            "Contiguous partial segment found: "
+            f"{segment_length} sampled candidate frames align in order at {round(segment_mean * 100)}% visual similarity "
+            f"({round(segment_candidate_fraction * 100)}% of the candidate timeline; "
+            f"{round(segment_source_fraction * 100)}% of the protected timeline)."
+        )
     mismatch_evidence = [
         f"{label} {score}% is below the {threshold}% copy-evidence threshold"
         for label, score, threshold in checks
@@ -217,6 +304,8 @@ def compare_dna(protected: Dict[str, object], candidate: Dict[str, object]) -> D
     decision_reason = (
         "Independent visual, scene, and coverage checks support a content match"
         if decision == "Match"
+        else "Some evidence is present, but the result requires human review"
+        if partial_segment_evidence
         else "Some evidence is present, but the result requires human review"
         if decision == "Review"
         else "No independent copy-evidence threshold was met; verified copy confidence is 0%"
@@ -236,6 +325,13 @@ def compare_dna(protected: Dict[str, object], candidate: Dict[str, object]) -> D
         "decision": decision,
         "signals": signals,
         "weights": {key: int(round(value * 100)) for key, value in weights.items()},
+        "partialSegment": {
+            "detected": partial_segment_evidence,
+            "matchedFrames": segment_length,
+            "candidateCoverage": round(segment_candidate_fraction * 100, 1),
+            "sourceCoverage": round(segment_source_fraction * 100, 1),
+            "visualSimilarity": round(segment_mean * 100, 1),
+        },
         "matchingEvidence": matching_evidence,
         "mismatchEvidence": mismatch_evidence,
         "reasons": reasons,

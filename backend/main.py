@@ -38,11 +38,7 @@ PROTECTED_DIR = BASE_DIR / "data" / "protected"
 CANDIDATE_DIR = BASE_DIR / "data" / "candidates"
 URL_CANDIDATE_DIR = BASE_DIR / "data" / "url_candidates"
 DEMO_COPY_DIR = BASE_DIR / "data" / "demo_copies"
-CONTROLLED_PUBLIC_SOURCE_URL = os.environ.get(
-    "CINESHIELD_CONTROLLED_SOURCE_URL",
-    "https://vidshare-dyvy.onrender.com",
-).strip().rstrip("/")
-CONTROLLED_PUBLIC_SOURCE_MEDIA_LIMIT = 4
+CONTROLLED_PUBLIC_SOURCE_MEDIA_LIMIT = 8
 CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS = (0, 4, 10)
 
 
@@ -63,6 +59,9 @@ def load_local_env() -> None:
 
 
 load_local_env()
+# An optional owned-source connector is deployment configuration, not application
+# code. With no configured connector, discovery relies on public search providers.
+CONTROLLED_PUBLIC_SOURCE_URL = os.environ.get("CINESHIELD_CONTROLLED_SOURCE_URL", "").strip().rstrip("/")
 PROTECTED_DIR.mkdir(parents=True, exist_ok=True)
 CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
 URL_CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -138,7 +137,7 @@ def direct_media_targets(discovery: Dict[str, object]) -> List[Dict[str, str]]:
     return targets[:CONTROLLED_PUBLIC_SOURCE_MEDIA_LIMIT]
 
 
-def controlled_public_discovery(work_title: str) -> Dict[str, object]:
+def configured_source_discovery(work_title: str, source_url: str) -> Dict[str, object]:
     """Discover public watch pages before collecting their direct video evidence.
 
     The first bounded pass reads the public landing page and sitemap.  Its same-host
@@ -148,7 +147,7 @@ def controlled_public_discovery(work_title: str) -> Dict[str, object]:
     initial = scan_public_sources(
         title=work_title,
         aliases=[],
-        seed_urls=[CONTROLLED_PUBLIC_SOURCE_URL],
+        seed_urls=[source_url],
         authorized_domains=[],
         max_pages=8,
         include_same_host_links=True,
@@ -175,7 +174,7 @@ def controlled_public_discovery(work_title: str) -> Dict[str, object]:
     expanded = scan_public_sources(
         title=work_title,
         aliases=[],
-        seed_urls=[CONTROLLED_PUBLIC_SOURCE_URL, *page_urls],
+        seed_urls=[source_url, *page_urls],
         authorized_domains=[],
         max_pages=8,
     )
@@ -195,11 +194,31 @@ def controlled_public_discovery(work_title: str) -> Dict[str, object]:
 
     combined = dict(expanded)
     combined["sourcesScanned"] = merged_sources
-    combined["seedCount"] = len({CONTROLLED_PUBLIC_SOURCE_URL, *page_urls})
+    combined["seedCount"] = len({source_url, *page_urls})
     combined["sitemapPagesDiscovered"] = int(initial.get("sitemapPagesDiscovered", 0)) + int(
         expanded.get("sitemapPagesDiscovered", 0)
     )
     return combined
+
+
+def public_media_discovery(work_title: str) -> Dict[str, object]:
+    """Use an external owned-source connector when present, else public indexes."""
+    if CONTROLLED_PUBLIC_SOURCE_URL:
+        return configured_source_discovery(work_title, CONTROLLED_PUBLIC_SOURCE_URL)
+
+    return search_public_web(
+        title=work_title,
+        aliases=[],
+        seed_urls=[],
+        authorized_domains=[],
+        providers=["brave", "bing", "google", "commoncrawl"],
+        query_limit=4,
+        max_results=8,
+        deep_scan_pages=6,
+        expand_depth=1,
+        expand_pages=12,
+        per_domain_page_limit=3,
+    )
 
 
 @app.get("/health")
@@ -314,13 +333,13 @@ async def scan_url_candidates(protected: UploadFile = File(...), request: str = 
     }
 
 
-@app.post("/api/discovery/controlled-verify")
-async def discover_controlled_public_copy(
+@app.post("/api/discovery/verify")
+async def discover_public_copy(
     protected: UploadFile = File(...),
     authorization_confirmed: bool = Form(False),
     title: str = Form(""),
 ) -> dict:
-    """Discover and verify an owned public-demo source without trusting a fixed media URL."""
+    """Discover public direct media and verify it against an authorized original."""
     if not authorization_confirmed:
         raise HTTPException(
             status_code=400,
@@ -328,9 +347,6 @@ async def discover_controlled_public_copy(
         )
     if not protected.filename:
         raise HTTPException(status_code=400, detail="Protected video file is required.")
-    if not CONTROLLED_PUBLIC_SOURCE_URL:
-        raise HTTPException(status_code=503, detail="No controlled public source is configured.")
-
     protected_path = PROTECTED_DIR / f"{uuid4().hex}_{Path(protected.filename).name}"
     with protected_path.open("wb") as handle:
         while chunk := await protected.read(65536):
@@ -338,10 +354,13 @@ async def discover_controlled_public_copy(
 
     work_title = inferred_work_title(title or protected.filename)
     discovery: Dict[str, object] = {}
-    for retry_delay in CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS:
+    # A sleeping connector can need one bounded retry. Public-index runs have
+    # their own provider timeouts and must return promptly.
+    retry_delays = CONTROLLED_PUBLIC_SOURCE_RETRY_DELAYS if CONTROLLED_PUBLIC_SOURCE_URL else (0,)
+    for retry_delay in retry_delays:
         if retry_delay:
             time.sleep(retry_delay)
-        discovery = controlled_public_discovery(work_title)
+        discovery = public_media_discovery(work_title)
         if any(bool(source.get("ok")) for source in discovery.get("sourcesScanned", []) if isinstance(source, dict)):
             break
     targets = direct_media_targets(discovery)
@@ -359,7 +378,7 @@ async def discover_controlled_public_copy(
 
     rejected: List[Dict[str, str]] = []
     checked = 0
-    matches: List[Dict[str, object]] = []
+    verified_evidence: List[Dict[str, object]] = []
     for index, target in enumerate(targets):
         run_dir = URL_CANDIDATE_DIR / uuid4().hex
         try:
@@ -382,18 +401,21 @@ async def discover_controlled_public_copy(
                 "evidenceLevelLabel": "Multimodal match" if result.get("decision") == "Match" else "Content fingerprint",
             }
         )
-        if result.get("decision") == "Match":
-            matches.append(result)
+        # A clipped candidate can be a real, ordered segment of the protected
+        # work. Keep it as reviewable discovery evidence rather than dropping it
+        # just because it is not a full-copy Match.
+        if result.get("decision") in {"Match", "Review"}:
+            verified_evidence.append(result)
 
-    if matches:
-        strongest_match = max(matches, key=lambda item: float(item.get("confidence", 0) or 0))
+    if verified_evidence:
+        strongest_match = max(verified_evidence, key=lambda item: float(item.get("confidence", 0) or 0))
         matched_sources = [
             {
                 "pageUrl": str(item.get("sourcePage") or ""),
                 "mediaUrl": str(item.get("sourceMediaUrl") or item.get("sourceUrl") or ""),
                 "confidence": float(item.get("confidence", 0) or 0),
             }
-            for item in matches
+            for item in verified_evidence
         ]
         investigation = build_investigation([strongest_match])
         investigation["sourceBoundary"] = (
@@ -401,12 +423,17 @@ async def discover_controlled_public_copy(
             "This evidence still requires authorized human review."
         )
         return {
-            "foundMatch": True,
-            "message": "Web discovery found matching public video evidence.",
+            "foundMatch": strongest_match.get("decision") == "Match",
+            "foundEvidence": True,
+            "message": (
+                "Web discovery found a full public-video match."
+                if strongest_match.get("decision") == "Match"
+                else "Web discovery found partial public-video evidence that requires review."
+            ),
             "result": strongest_match,
             "discovery": discovery,
             "checkedMedia": checked,
-            "matchedMedia": len(matches),
+            "matchedMedia": len(verified_evidence),
             "matchedSources": matched_sources,
             "rejectedCandidates": rejected,
             "investigation": investigation,
@@ -415,6 +442,7 @@ async def discover_controlled_public_copy(
 
     return {
         "foundMatch": False,
+        "foundEvidence": False,
         "message": "No verifiable copy was found in the current public search.",
         "result": None,
         "discovery": discovery,

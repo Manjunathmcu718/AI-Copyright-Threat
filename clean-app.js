@@ -465,13 +465,14 @@ async function deskInspectSource() {
     formData.append("protected", deskState.protectedFile);
     formData.append("title", title);
     formData.append("authorization_confirmed", "true");
-    const response = await fetch(`${DESK_API}/api/discovery/controlled-verify`, { method: "POST", body: formData });
+    const response = await fetch(`${DESK_API}/api/discovery/verify`, { method: "POST", body: formData });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.detail || "The public website could not be inspected.");
     const checkedMedia = Math.max(0, Number(payload.checkedMedia || 0));
     const matchedMedia = Math.max(0, Number(payload.matchedMedia || 0));
     const checkedLabel = checkedMedia === 1 ? "1 accessible public video" : `${checkedMedia} accessible public videos`;
-    if (!payload.foundMatch || !payload.result) {
+    const hasPublicEvidence = Boolean(payload.foundEvidence ?? payload.foundMatch);
+    if (!hasPublicEvidence || !payload.result) {
       deskState.results = [];
       deskState.investigation = null;
       deskState.publicSource = null;
@@ -516,8 +517,11 @@ async function deskInspectSource() {
     deskSetProgress(2);
     const top = deskState.results[0];
     deskSetStatus(top?.decision || "Complete", deskDecisionTone(top?.decision));
-    deskSetDiscoveryState("Matching public video found", "match");
-    const matchLabel = matchedMedia === 1 ? "1 matching video" : `${matchedMedia} matching videos`;
+    const partialEvidence = top?.decision === "Review";
+    deskSetDiscoveryState(partialEvidence ? "Partial public copy found" : "Matching public video found", partialEvidence ? "review" : "match");
+    const matchLabel = partialEvidence
+      ? (matchedMedia === 1 ? "1 public video with partial-copy evidence" : `${matchedMedia} public videos with partial-copy evidence`)
+      : (matchedMedia === 1 ? "1 matching video" : `${matchedMedia} matching videos`);
     const verifiedSources = Array.isArray(payload.matchedSources) ? payload.matchedSources : [];
     const sourceRows = verifiedSources.map((source, index) => {
       const pageUrl = String(source?.pageUrl || "");
@@ -526,7 +530,7 @@ async function deskInspectSource() {
       return `<li><strong>Match ${index + 1} (${confidence}%):</strong> <a href="${deskEscape(pageUrl || mediaUrl)}" target="_blank" rel="noreferrer">${deskEscape(pageUrl || mediaUrl)}</a>${mediaUrl && mediaUrl !== pageUrl ? `<br><a href="${deskEscape(mediaUrl)}" target="_blank" rel="noreferrer">${deskEscape(mediaUrl)}</a>` : ""}</li>`;
     }).join("");
     deskSetSourceFeedback(`<strong>Web discovery found ${deskEscape(matchLabel)}.</strong><ul><li>Public videos checked: ${checkedMedia}</li><li>Decision: ${deskEscape(top.decision || "No result")} (${Number(top.confidence || 0).toFixed(1)}%)</li>${sourceRows || `<li>Video page: ${deskEscape(top.sourcePage || "")}</li><li>Video URL: ${deskEscape(top.sourceMediaUrl || top.sourceUrl || "")}</li>`}</ul>`);
-    deskSetActivity("Web discovery found a match", `${matchLabel} verified by Content DNA after checking ${checkedLabel}.`);
+    deskSetActivity(partialEvidence ? "Web discovery found a partial copy" : "Web discovery found a match", `${matchLabel} verified by Content DNA after checking ${checkedLabel}.`);
     desk("#desk-results").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
     deskSetStatus("Could not verify", "error");
